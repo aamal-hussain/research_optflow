@@ -1,0 +1,31 @@
+batch_size: 2
+sequence_length: 2048
+device: "cuda"
+diffusion:
+  model:
+    in_channels: 64
+    inner_product_channels: 64
+    num_heads: 8
+    depth: 12
+    num_freqs: 8
+    include_pi: false
+  noise_scheduler:
+    beta_start: 0.0001
+    beta_end: 0.02
+    num_timesteps: 1000
+    schedule_type: "linear"
+vae:
+  point_feature_channels: 3
+  latent_sequence_length: 2048
+  embed_dim: 64
+  out_dims: 1
+  width: 768
+  num_heads: 12
+  num_freqs: 8
+  include_pi: false
+  encoder_depth: 8
+  decoder_depth: 16
+  qkv_bias: false
+  use_checkpoint: true
+
+  checkpoint_path: "/mnt/storage01/workspace/research/lethe/pretrained_checkpoints/dora/original-dora-v1.1/state_dict.pth"

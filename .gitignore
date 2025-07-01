@@ -1,0 +1,5 @@
+.pxs_credentials
+outputs/
+.vscode/
+**/__pycache__/
+**.egg-info

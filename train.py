@@ -1,0 +1,143 @@
+"""We have three components to this model:
+1. Dora decoder - used for terminal cost
+2. Dora encoder - used to generate manifold for path cost
+3. Diffusion model - used to generate the path. It looks like neither dora nor 3DShape2VecSet provides a diffusion model,
+so I will build one from scratch.
+"""
+
+import hydra
+import torch
+from omegaconf import DictConfig
+
+# from conf.config import Config
+from optflow.diffusion.model import LatentTransformer
+from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
+from optflow.dora import DoraVAE
+
+
+@hydra.main(
+    version_base=None, config_path="conf", config_name="config"
+)  # if using yaml, use config_path="conf")
+def test_diffusion(cfg: DictConfig) -> None:  # if using yaml, use DictConfig
+    model = LatentTransformer(
+        in_channels=cfg.model.in_channels,
+        inner_product_channels=cfg.model.inner_product_channels,
+        out_channels=cfg.model.in_channels,  # out_channels should match in_channels
+        num_heads=cfg.model.num_heads,
+        depth=cfg.model.depth,
+        num_freqs=cfg.model.num_freqs,
+        include_pi=cfg.model.include_pi,
+    ).to(cfg.device)
+
+    noise_scheduler = NoiseScheduler(
+        num_timesteps=cfg.noise_scheduler.num_timesteps,
+        beta_start=cfg.noise_scheduler.beta_start,
+        beta_end=cfg.noise_scheduler.beta_end,
+        beta_schedule=ScheduleType(cfg.noise_scheduler.schedule_type),
+        device=cfg.device,
+    )
+
+    x = torch.randn(cfg.batch_size, cfg.sequence_length, cfg.model.in_channels).to(
+        cfg.device
+    )
+    noise = torch.randn_like(x).to(cfg.device)
+
+    t = torch.randint(
+        0, noise_scheduler.num_timesteps, (cfg.batch_size,), device=cfg.device
+    )
+    x_corrupted = noise_scheduler.add_noise(x, noise, t)
+
+    y = model(x_corrupted, t.unsqueeze(-1))
+    print(y.shape)
+    assert y.shape == (
+        cfg.batch_size,
+        cfg.sequence_length,
+        cfg.model.in_channels,
+    ), "Output shape mismatch"
+
+
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def test_dora_pretrained_encoder(cfg: DictConfig) -> None:
+    model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
+    model.to(cfg.device)
+
+    model.encoder_mode()
+    coarse_pc = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
+    coarse_feats = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
+    sharp_pc = torch.randn(cfg.batch_size, 2048, 3, device=cfg.device)
+    sharp_feats = torch.randn(cfg.batch_size, 2048, 3, device=cfg.device)
+
+    with torch.inference_mode():
+        moments = model(
+            coarse_pc=coarse_pc,
+            coarse_feats=coarse_feats,
+            sharp_pc=sharp_pc,
+            sharp_feats=sharp_feats,
+        )
+
+    print("Moments shape:", moments.shape)
+    assert moments.shape == (
+        cfg.batch_size,
+        cfg.vae.latent_sequence_length,
+        cfg.vae.embed_dim * 2,
+    ), "Moments shape mismatch"
+
+
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def test_dora_pretrained_decoder(cfg: DictConfig) -> None:
+    model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
+    model.to(cfg.device)
+
+    model.decoder_mode()
+
+    query_points = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
+    latents = torch.randn(
+        cfg.batch_size, cfg.vae.latent_sequence_length, cfg.vae.embed_dim, device=cfg.device
+    )
+
+    with torch.inference_mode():
+        signed_distance = model(
+            latents=latents,
+            query_points=query_points,
+        )
+
+    print("SDF shape:", signed_distance.shape)
+    assert signed_distance.shape == (
+        cfg.batch_size,
+        16384,
+        cfg.vae.out_dims,
+    ), "Signed distance shape mismatch"
+
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def test_dora_pretrained_default(cfg: DictConfig) -> None:
+    model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
+    model.to(cfg.device)
+
+    model.default_mode()
+
+    coarse_pc = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
+    coarse_feats = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
+    sharp_pc = torch.randn(cfg.batch_size, 2048, 3, device=cfg.device)
+    sharp_feats = torch.randn(cfg.batch_size, 2048, 3, device=cfg.device)
+    query_points = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
+
+    with torch.inference_mode():
+        signed_distance = model(
+            coarse_pc=coarse_pc,
+            coarse_feats=coarse_feats,
+            sharp_pc=sharp_pc,
+            sharp_feats=sharp_feats,
+            query_points=query_points,
+        )
+
+    print("SDF shape:", signed_distance.shape)
+    assert signed_distance.shape == (
+        cfg.batch_size,
+        16384,
+        cfg.vae.out_dims,
+    ), "Signed distance shape mismatch"
+
+
+
+if __name__ == "__main__":
+    test_dora_pretrained_decoder()
