@@ -19,16 +19,23 @@ class AdaptiveLayerNorm(nn.Module):
         return x
 
 
-
 class TransformerBlock(nn.Module):
     def __init__(self, in_channels, num_heads, inner_product_channels):
         super().__init__()
-        self.inner_dim = in_channels
+        self.in_channels = in_channels
         self.num_heads = num_heads
         self.inner_product_channels = inner_product_channels
 
-        self.attn1 = SelfAttention(in_channels, num_heads, inner_product_channels)
-        self.attn2 = SelfAttention(in_channels, num_heads, inner_product_channels)
+        self.attn1 = SelfAttention(
+            in_channels=in_channels,
+            num_heads=num_heads,
+            inner_product_channels=inner_product_channels,
+        )
+        self.attn2 = SelfAttention(
+            in_channels=in_channels,
+            num_heads=num_heads,
+            inner_product_channels=inner_product_channels,
+        )
         self.norm1 = AdaptiveLayerNorm(in_channels)
         self.norm2 = AdaptiveLayerNorm(in_channels)
         self.norm3 = nn.LayerNorm(in_channels)
@@ -66,7 +73,9 @@ class LatentTransformer(nn.Module):
         self.norm = nn.LayerNorm(inner_dim)
         self.projection = nn.Linear(inner_dim, out_channels, bias=False)
 
-        self.map_noise = PositionalEncoding(num_freqs=num_freqs, in_channels=1, include_pi=include_pi)
+        self.map_noise = PositionalEncoding(
+            num_freqs=num_freqs, in_channels=1, include_pi=include_pi
+        )
         self.time_lifting = nn.Sequential(
             nn.Linear(self.map_noise.out_dims, inner_dim),
             nn.SiLU(),

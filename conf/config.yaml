@@ -1,6 +1,23 @@
-batch_size: 2
+batch_size: 16
 sequence_length: 2048
+n_epochs: 1000
+optimizer:
+  lr: 5e-4
+  weight_decay: 1e-4
 device: "cuda"
+dataset:
+  name: "shapenet_13"
+  num_workers: 16
+  params:
+    verts_key: "mesh.verts"
+    faces_key: "mesh.faces"
+    areas_key: "mesh.faces_areas"
+    faces_normals_key: "mesh.faces_normals"
+    num_coarse_points: 32_768
+    num_sharp_points: 32_768
+    num_query_points: 32_768
+    oversample_factor: 8
+    minimum_sharp_edge_angle: 15.0
 diffusion:
   model:
     in_channels: 64

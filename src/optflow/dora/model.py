@@ -47,7 +47,7 @@ class DoraVAE(nn.Module):
     ):
         super().__init__()
 
-        self._mode = InferenceMode.DEFAULT
+        self.mode = InferenceMode.DEFAULT
         self.encoder = DoraEncoder(
             point_feature_channels=point_feature_channels,
             latent_sequence_length=latent_sequence_length,
@@ -85,15 +85,15 @@ class DoraVAE(nn.Module):
 
     def encoder_mode(self):
         """Set the model to encoder mode."""
-        self._mode = InferenceMode.ENCODER
+        self.mode = InferenceMode.ENCODER
 
     def decoder_mode(self):
         """Set the model to decoder mode."""
-        self._mode = InferenceMode.DECODER
+        self.mode = InferenceMode.DECODER
 
     def default_mode(self):
         """Set the model to default mode."""
-        self._mode = InferenceMode.DEFAULT
+        self.mode = InferenceMode.DEFAULT
 
     @classmethod
     def from_pretrained_checkpoint(
@@ -127,7 +127,7 @@ class DoraVAE(nn.Module):
         latents: torch.Tensor | None = None,
         query_points: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        match self._mode:
+        match self.mode:
             case InferenceMode.DEFAULT:
                 if coarse_pc is None or coarse_feats is None:
                     raise ValueError("coarse_pc and coarse_feats must be provided in DEFAULT mode.")
