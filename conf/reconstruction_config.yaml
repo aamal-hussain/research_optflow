@@ -1,0 +1,15 @@
+dataset_name: "shapenet_car"
+sample_name: "1ad321f067ffbe7e51a95aaa6caba1d3"
+checkpoint_path: "/mnt/storage01/workspace/research/lethe/pretrained_checkpoints/dora/original-dora-v1.1/state_dict.pth"
+device: "cuda:2"
+grid_size: 64
+sample_posterior: true
+dataset_params:
+  verts_key: "mesh.verts"
+  faces_key: "mesh.faces"
+  areas_key: "mesh.areas"
+  faces_normals_key: "mesh.faces_normals"
+  num_input_points: 32_768
+  num_query_points: 32_768
+  minimum_sharp_edge_angle: 15.0
+pyvista_primitive: "bunny"

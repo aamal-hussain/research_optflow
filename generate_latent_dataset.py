@@ -39,7 +39,7 @@ def create_dataloader(
     )
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def generate_latent_dataset(cfg: DictConfig):
     model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
     model.to(cfg.device)
@@ -81,7 +81,7 @@ def generate_latent_dataset(cfg: DictConfig):
             samples[str(i).zfill(5)] = {"latents": latents.detach().cpu().numpy().squeeze()}
 
 
-    latents_data_path = data_base_path / "latents" / _SPLIT
+    latents_data_path = Path("data/") / "latents" / _SPLIT
     latents_data_path.mkdir(parents=True, exist_ok=True)
     for name, sample in tqdm(samples.items(), desc="Saving Latents"):
         with h5py.File(latents_data_path / f"{name}.h5", "w") as f:

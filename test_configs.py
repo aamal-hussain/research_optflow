@@ -9,7 +9,6 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
-# from conf.config import Config
 from optflow.diffusion.model import LatentTransformer
 from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora import DoraVAE
@@ -17,27 +16,27 @@ from optflow.dora import DoraVAE
 
 @hydra.main(
     version_base=None, config_path="conf", config_name="config"
-)  # if using yaml, use config_path="conf")
-def test_diffusion(cfg: DictConfig) -> None:  # if using yaml, use DictConfig
+)
+def test_diffusion(cfg: DictConfig) -> None:
     model = LatentTransformer(
-        in_channels=cfg.model.in_channels,
-        inner_product_channels=cfg.model.inner_product_channels,
-        out_channels=cfg.model.in_channels,  # out_channels should match in_channels
-        num_heads=cfg.model.num_heads,
-        depth=cfg.model.depth,
-        num_freqs=cfg.model.num_freqs,
-        include_pi=cfg.model.include_pi,
+        in_channels=cfg.diffusion.model.in_channels,
+        inner_product_channels=cfg.diffusion.model.inner_product_channels,
+        out_channels=cfg.diffusion.model.in_channels,  # out_channels should match in_channels
+        num_heads=cfg.diffusion.model.num_heads,
+        depth=cfg.diffusion.model.depth,
+        num_freqs=cfg.diffusion.model.num_freqs,
+        include_pi=cfg.diffusion.model.include_pi,
     ).to(cfg.device)
 
     noise_scheduler = NoiseScheduler(
-        num_timesteps=cfg.noise_scheduler.num_timesteps,
-        beta_start=cfg.noise_scheduler.beta_start,
-        beta_end=cfg.noise_scheduler.beta_end,
-        beta_schedule=ScheduleType(cfg.noise_scheduler.schedule_type),
+        num_timesteps=cfg.diffusion.noise_scheduler.num_timesteps,
+        beta_start=cfg.diffusion.noise_scheduler.beta_start,
+        beta_end=cfg.diffusion.noise_scheduler.beta_end,
+        beta_schedule=ScheduleType(cfg.diffusion.noise_scheduler.schedule_type),
         device=cfg.device,
     )
 
-    x = torch.randn(cfg.batch_size, cfg.sequence_length, cfg.model.in_channels).to(
+    x = torch.randn(cfg.batch_size, cfg.sequence_length, cfg.diffusion.model.in_channels).to(
         cfg.device
     )
     noise = torch.randn_like(x).to(cfg.device)
@@ -52,7 +51,7 @@ def test_diffusion(cfg: DictConfig) -> None:  # if using yaml, use DictConfig
     assert y.shape == (
         cfg.batch_size,
         cfg.sequence_length,
-        cfg.model.in_channels,
+        cfg.diffusion.model.in_channels,
     ), "Output shape mismatch"
 
 
@@ -140,4 +139,4 @@ def test_dora_pretrained_default(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    test_dora_pretrained_decoder()
+    test_diffusion()

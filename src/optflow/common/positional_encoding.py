@@ -11,14 +11,17 @@ class PositionalEncoding(nn.Module):
         if include_pi:
             frequencies *= torch.pi
 
+        frequencies = frequencies.view(1, 1, -1)
         self.register_buffer("frequencies", frequencies, persistent=False)
         self.include_input = include_input
         self.num_freqs = num_freqs
         self.out_dims = in_channels * (2 * num_freqs + int(include_input))
 
     def forward(self, x):
-        embed = (x[..., None].contiguous() * self.frequencies).view(*x.shape[:-1], -1)
+        embed = x.unsqueeze(-1) * self.frequencies
+        embed = torch.cat([embed.sin(), embed.cos()], dim=-2)
+        embed = embed.flatten(-2)
+
         if self.include_input:
-            return torch.cat((x, embed.sin(), embed.cos()), dim=-1)
-        else:
-            return torch.cat((embed.sin(), embed.cos()), dim=-1)
+            embed = torch.cat((x, embed), dim=-1)
+        return embed

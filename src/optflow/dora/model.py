@@ -126,6 +126,7 @@ class DoraVAE(nn.Module):
         sharp_feats: torch.Tensor | None = None,
         latents: torch.Tensor | None = None,
         query_points: torch.Tensor | None = None,
+        sample_posterior: bool = False,
     ) -> torch.Tensor:
         match self.mode:
             case InferenceMode.DEFAULT:
@@ -147,12 +148,15 @@ class DoraVAE(nn.Module):
                 moments = self.pre_kl(shape_latents)
                 mu, logvar = torch.chunk(moments, 2, dim=-1)
                 logvar = logvar.clamp(min=-30.0, max=20.0)
-                std = torch.exp(0.5 * logvar)
-                sample = torch.randn_like(std)
-                z = mu + sample * std
+                if sample_posterior:
+                    std = torch.exp(0.5 * logvar)
+                    sample = torch.randn_like(std)
+                    z = mu + sample * std
+                else:
+                    z = mu
                 z = self.post_kl(z)
-                x = self.transformer(z)
-                return self.decoder(query_points, x)
+                z = self.transformer(z)
+                return self.decoder(query_points, z)
             case InferenceMode.ENCODER:
                 if coarse_pc is None or coarse_feats is None:
                     raise ValueError("coarse_pc and coarse_feats must be provided in ENCODER mode.")

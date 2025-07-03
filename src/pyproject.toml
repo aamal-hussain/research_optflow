@@ -18,6 +18,8 @@ dependencies = [
     "point-cloud-utils",
     "scikit-image",
     "tqdm",
+    "mlflow",
+    "physicsx.pxs[cuda-12,experimental-acheron,opora]==0.28.0-dev.6",
 ]
 
 [tool.setuptools.dynamic.version]

@@ -1,5 +1,8 @@
-"""Sampling for Dora. Lifted directly from Douglas' implementation."""
+"""Sampling for Dora. Lifted directly from Douglas' implementation since it is
+better than the original.
+"""
 
+import logging
 from typing import Sequence
 
 import fpsample
@@ -98,7 +101,7 @@ def sample_coarse_points_and_normals(
     faces: np.ndarray,
     face_normals: np.ndarray,
     num_samples: int,
-    oversample_factor: int = 1,
+    oversample_factor: int = 8,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Process a mesh to detect sharp edges and sample points on the mesh surface.
 
@@ -122,11 +125,14 @@ def sample_coarse_points_and_normals(
     return points, normals
 
 
-def get_edges_and_adjacent_faces(faces: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def get_edges_and_adjacent_faces(
+    faces: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Get edges and adjacent faces from a mesh.
 
     Args:
         faces: numpy array of shape (n_faces, 3) containing vertex indices for each face
+
     Returns:
         edges: numpy array of shape (n_edges, 2) containing vertex indices for each edge
         adjacent_faces: numpy array of shape (n_edges, 2) containing face indices for each edge
@@ -143,13 +149,25 @@ def get_edges_and_adjacent_faces(faces: np.ndarray) -> tuple[np.ndarray, np.ndar
     face_indices = np.tile(face_indices, 3)
 
     idx = np.lexsort(edges[:, ::-1].T, axis=0)
-
-    assert len(idx) % 2 == 0, "Odd number of edges found, mesh has open edges."
-    idx = idx.reshape(-1, 2)
     edges = edges[idx]
-    adjacent_faces = face_indices[idx]
-    assert np.all(edges[:, 0] == edges[:, 1]), "Not all edges are closed."
-    edges = edges[:, 0]
+    face_indices = face_indices[idx]
+
+    closed_edge_idx = np.where(np.all(np.diff(edges, axis=0) == 0, axis=1))[0]
+
+    number_closed_edges = len(closed_edge_idx)
+    number_open_edges = len(edges) - 2 * number_closed_edges
+
+    if number_open_edges != 0:
+        logging.warning(
+            f"{number_open_edges} out of {number_open_edges+number_closed_edges} edges are open."
+            "Proceeding with sampling, but results may be affected."
+        )
+
+    edges = edges[closed_edge_idx]
+    adjacent_faces = np.stack(
+        (face_indices[closed_edge_idx], face_indices[closed_edge_idx + 1]), axis=1
+    )
+
     return edges, adjacent_faces
 
 

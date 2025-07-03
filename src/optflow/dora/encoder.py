@@ -64,20 +64,12 @@ class DoraEncoder(nn.Module):
         bs, N_coarse, D_coarse = coarse_pc.shape
         bs, N_sharp, D_sharp = sharp_pc.shape
 
+        ### Coarse Point Cloud ###
         coarse_data = self.embedder(coarse_pc)
         coarse_data = torch.cat([coarse_data, coarse_feats], dim=-1)
 
         coarse_data = self.input_proj(coarse_data)
-
-        sharp_data = self.embedder(sharp_pc)
-        sharp_data = torch.cat([sharp_data, sharp_feats], dim=-1)
-
-        sharp_data = self.input_proj1(sharp_data)
-
-
         coarse_ratio = (self.latent_sequence_length // 2) / N_coarse
-        sharp_ratio = (self.latent_sequence_length // 2)  / N_sharp
-
         flattened = coarse_pc.view(bs * N_coarse, D_coarse)
         batch = torch.arange(bs).to(coarse_pc.device)
         batch = torch.repeat_interleave(batch, N_coarse)
@@ -85,6 +77,11 @@ class DoraEncoder(nn.Module):
         idx = fps(pos, batch, ratio=coarse_ratio)
         query_coarse = coarse_data.view(bs * N_coarse, -1)[idx].view(bs, -1, coarse_data.shape[-1])
 
+        ### Sharp Point Cloud ###
+        sharp_data = self.embedder(sharp_pc)
+        sharp_data = torch.cat([sharp_data, sharp_feats], dim=-1)
+        sharp_data = self.input_proj1(sharp_data)
+        sharp_ratio = (self.latent_sequence_length // 2)  / N_sharp
         flattened = sharp_pc.view(bs * N_sharp, D_sharp)
         batch = torch.arange(bs).to(sharp_pc.device)
         batch = torch.repeat_interleave(batch, N_sharp)
