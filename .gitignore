@@ -3,6 +3,5 @@ outputs/
 .vscode/
 **/__pycache__/
 **.egg-info
-scripts/
 data/
 mlruns/

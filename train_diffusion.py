@@ -16,8 +16,6 @@ from optflow.dora.dataset.dataset import DoraDataset
 from optflow.dora.model import DoraVAE, InferenceMode
 from optflow.utils.h5_dataset import H5Dataset
 
-from pxs.experimental.models.acheron.pytorch.core.base import AcheronPyTorch
-
 
 def create_dataloader(
     data_path: Path,

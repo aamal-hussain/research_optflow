@@ -2,7 +2,6 @@
 better than the original.
 """
 
-import logging
 from typing import Sequence
 
 import fpsample
