@@ -176,10 +176,8 @@ def train(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def train_diffusion_model(cfg: DictConfig):
-    vae = AcheronPyTorch.from_pretrained_checkpoint(
-        architecture="dora",
-        version="original-dora-v1.1",
-        device=cfg.device
+    vae = DoraVAE.from_pretrained_checkpoint(
+        checkpoint_path=cfg.vae.checkpoint_path
     )
     vae.encoder_mode()
 
