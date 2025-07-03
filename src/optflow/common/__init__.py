@@ -3,9 +3,4 @@ from .mlp import MLP
 from .positional_encoding import PositionalEncoding
 from .self_attention import SelfAttention
 
-__all__ = [
-    "MLP",
-    "PositionalEncoding",
-    "SelfAttention",
-    "CrossAttention"
-]
+__all__ = ["MLP", "PositionalEncoding", "SelfAttention", "CrossAttention"]

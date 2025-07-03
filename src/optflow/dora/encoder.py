@@ -81,7 +81,7 @@ class DoraEncoder(nn.Module):
         sharp_data = self.embedder(sharp_pc)
         sharp_data = torch.cat([sharp_data, sharp_feats], dim=-1)
         sharp_data = self.input_proj1(sharp_data)
-        sharp_ratio = (self.latent_sequence_length // 2)  / N_sharp
+        sharp_ratio = (self.latent_sequence_length // 2) / N_sharp
         flattened = sharp_pc.view(bs * N_sharp, D_sharp)
         batch = torch.arange(bs).to(sharp_pc.device)
         batch = torch.repeat_interleave(batch, N_sharp)

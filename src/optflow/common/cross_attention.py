@@ -18,9 +18,7 @@ class CrossAttention(nn.Module):
         self.c_kv = nn.Linear(in_channels, num_heads * inner_product_channels * 2, bias=qkv_bias)
         # Output projection yields query_channels so that the residual connection works.
         self.c_proj = nn.Linear(num_heads * inner_product_channels, query_channels)
-        self.attention = QKVMultiheadCrossAttention(
-            num_heads=num_heads
-        )
+        self.attention = QKVMultiheadCrossAttention(num_heads=num_heads)
 
     def forward(self, queries, x):
         q = self.c_q(queries)
@@ -32,7 +30,6 @@ class CrossAttention(nn.Module):
 
 class QKVMultiheadCrossAttention(nn.Module):
     def __init__(self, *, num_heads: int):
-
         super().__init__()
         self.num_heads = num_heads
 
@@ -42,7 +39,6 @@ class QKVMultiheadCrossAttention(nn.Module):
         q = q.view(bs, m, self.num_heads, -1)
         kv = kv.view(bs, n, self.num_heads, -1)
         k, v = kv.chunk(2, dim=-1)
-
 
         q = q.permute(0, 2, 1, 3)
         k = k.permute(0, 2, 1, 3)

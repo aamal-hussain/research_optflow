@@ -14,9 +14,7 @@ from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora import DoraVAE
 
 
-@hydra.main(
-    version_base=None, config_path="conf", config_name="config"
-)
+@hydra.main(version_base=None, config_path="conf", config_name="config")
 def test_diffusion(cfg: DictConfig) -> None:
     model = LatentTransformer(
         in_channels=cfg.diffusion.model.in_channels,
@@ -36,9 +34,9 @@ def test_diffusion(cfg: DictConfig) -> None:
         device=cfg.device,
     )
 
-    x = torch.randn(cfg.batch_size, cfg.sequence_length, cfg.diffusion.model.in_channels).to(
-        cfg.device
-    )
+    x = torch.randn(
+        cfg.batch_size, cfg.sequence_length, cfg.diffusion.model.in_channels
+    ).to(cfg.device)
     noise = torch.randn_like(x).to(cfg.device)
 
     t = torch.randint(
@@ -91,7 +89,10 @@ def test_dora_pretrained_decoder(cfg: DictConfig) -> None:
 
     query_points = torch.randn(cfg.batch_size, 16384, 3, device=cfg.device)
     latents = torch.randn(
-        cfg.batch_size, cfg.vae.latent_sequence_length, cfg.vae.embed_dim, device=cfg.device
+        cfg.batch_size,
+        cfg.vae.latent_sequence_length,
+        cfg.vae.embed_dim,
+        device=cfg.device,
     )
 
     with torch.inference_mode():
@@ -106,6 +107,7 @@ def test_dora_pretrained_decoder(cfg: DictConfig) -> None:
         16384,
         cfg.vae.out_dims,
     ), "Signed distance shape mismatch"
+
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def test_dora_pretrained_default(cfg: DictConfig) -> None:
@@ -135,7 +137,6 @@ def test_dora_pretrained_default(cfg: DictConfig) -> None:
         16384,
         cfg.vae.out_dims,
     ), "Signed distance shape mismatch"
-
 
 
 if __name__ == "__main__":

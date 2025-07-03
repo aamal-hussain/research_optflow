@@ -1,4 +1,5 @@
 """Noise Scheduler for Diffusion Models. Implementation reproduced from Baldassari et al. (2023)."""
+
 from enum import Enum
 
 import torch
@@ -9,6 +10,7 @@ class ScheduleType(Enum):
     LINEAR = "linear"
     QUADRATIC = "quadratic"
 
+
 class NoiseScheduler:
     def __init__(
         self,
@@ -16,8 +18,8 @@ class NoiseScheduler:
         beta_start: float,
         beta_end: float,
         beta_schedule: ScheduleType,
-        device: str
-        ):
+        device: str,
+    ):
         self.num_timesteps = num_timesteps
         match beta_schedule:
             case ScheduleType.LINEAR:
@@ -85,7 +87,7 @@ class NoiseScheduler:
         variance = 0
         if t > 0:
             noise = torch.randn_like(model_output)
-            variance = self.get_variance(t)**0.5 * noise
+            variance = self.get_variance(t) ** 0.5 * noise
 
         return predicted_prev_sample + variance
 

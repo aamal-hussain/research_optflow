@@ -15,7 +15,7 @@ class DoraDecoder(nn.Module):
         num_freqs: int,
         include_pi: bool,
         qkv_bias: bool,
-        use_checkpoint: bool
+        use_checkpoint: bool,
     ):
         super().__init__()
 

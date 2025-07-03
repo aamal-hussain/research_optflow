@@ -18,6 +18,7 @@ from optflow.utils.h5_dataset import H5Dataset
 
 from pxs.experimental.models.acheron.pytorch.core.base import AcheronPyTorch
 
+
 def create_dataloader(
     data_path: Path,
     mode: InferenceMode,
@@ -178,7 +179,7 @@ def train(
 def train_diffusion_model(cfg: DictConfig):
     vae = DoraVAE.from_pretrained_checkpoint(
         checkpoint_path=cfg.vae.checkpoint_path
-    )
+    ).to(cfg.device)
     vae.encoder_mode()
 
     model, noise_scheduler, optimizer = setup_training_artifacts(cfg)
@@ -208,7 +209,6 @@ def train_diffusion_model(cfg: DictConfig):
             noise_scheduler,
             optimizer,
         )
-
 
     return model
 

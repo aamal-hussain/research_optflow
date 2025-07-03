@@ -10,6 +10,5 @@ class MLP(nn.Module):
         self.gelu = nn.GELU()
         self.c_proj = nn.Linear(hidden_channels, out_channels)
 
-
     def forward(self, x):
         return self.c_proj(self.gelu(self.c_fc(x)))

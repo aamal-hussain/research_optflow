@@ -65,13 +65,12 @@ class DoraDataset(Dataset):
                 "coarse_pc": coarse_pc,
                 "coarse_feats": coarse_normals,
                 "sharp_pc": sharp_pc,
-                "sharp_feats": sharp_normals
+                "sharp_feats": sharp_normals,
             }
         )
         return encoder_sample
 
     def _decoder_sample(self, sample: dict[str, np.ndarray]) -> dict[str, torch.Tensor]:
-
         coarse_xyz, coarse_sdf = sample_points_and_signed_distance(
             vertices=sample[self._verts_key],
             faces=sample[self._faces_key],
@@ -87,13 +86,14 @@ class DoraDataset(Dataset):
             standard_deviations=[1e-3, 5e-3, 7e-3, 1e-2],
         )
         agnostic_xyz, agnostic_sdf = sample_points_and_signed_distance(
-            vertices=sample[self._verts_key],
-            faces=sample[self._faces_key],
-            num_samples=10_000
+            vertices=sample[self._verts_key], faces=sample[self._faces_key], num_samples=10_000
         )
-        xyz=np.vstack((coarse_xyz, sharp_xyz, agnostic_xyz))
-        sdf=np.concatenate((coarse_sdf, sharp_sdf, agnostic_sdf), axis=0)
-        return {"query_points": np.asarray(xyz, dtype=np.float32), "sdf": np.asarray(sdf, dtype=np.float32)}
+        xyz = np.vstack((coarse_xyz, sharp_xyz, agnostic_xyz))
+        sdf = np.concatenate((coarse_sdf, sharp_sdf, agnostic_sdf), axis=0)
+        return {
+            "query_points": np.asarray(xyz, dtype=np.float32),
+            "sdf": np.asarray(sdf, dtype=np.float32),
+        }
 
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         sample = self._data[idx]

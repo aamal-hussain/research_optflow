@@ -1,6 +1,7 @@
 """Attention modules for the Dora architecture.
 Cosmetic modifications from the original Dora implementation.
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,7 +20,7 @@ class ResidualSelfAttentionBlock(nn.Module):
         inner_product_channels: int,
         num_heads: int,
         qkv_bias: bool,
-        use_checkpoint: bool
+        use_checkpoint: bool,
     ):
         super().__init__()
 
@@ -30,7 +31,7 @@ class ResidualSelfAttentionBlock(nn.Module):
             in_channels=in_channels,
             inner_product_channels=inner_product_channels,
             num_heads=num_heads,
-            qkv_bias=qkv_bias
+            qkv_bias=qkv_bias,
         )
         self.ln_1 = nn.LayerNorm(width)
         self.mlp = MLP(in_channels=width, out_channels=width)
@@ -47,6 +48,7 @@ class ResidualSelfAttentionBlock(nn.Module):
         else:
             return self._forward(x)
 
+
 class ResidualCrossAttentionBlock(nn.Module):
     def __init__(
         self,
@@ -56,7 +58,7 @@ class ResidualCrossAttentionBlock(nn.Module):
         inner_product_channels: int,
         num_heads: int,
         qkv_bias: bool,
-        use_checkpoint: bool
+        use_checkpoint: bool,
     ):
         super().__init__()
 
@@ -67,7 +69,7 @@ class ResidualCrossAttentionBlock(nn.Module):
             query_channels=query_channels,
             inner_product_channels=inner_product_channels,
             num_heads=num_heads,
-            qkv_bias=qkv_bias
+            qkv_bias=qkv_bias,
         )
         self.ln_1 = nn.LayerNorm(width)
         self.ln_2 = nn.LayerNorm(width)
@@ -84,6 +86,7 @@ class ResidualCrossAttentionBlock(nn.Module):
             return checkpoint(self._forward, x, data, use_reentrant=False)
         else:
             return self._forward(x, data)
+
 
 class Perceiver(nn.Module):
     def __init__(
@@ -104,7 +107,7 @@ class Perceiver(nn.Module):
                     inner_product_channels=inner_product_channels,
                     num_heads=num_heads,
                     qkv_bias=qkv_bias,
-                    use_checkpoint=use_checkpoint
+                    use_checkpoint=use_checkpoint,
                 )
                 for _ in range(depth)
             ]

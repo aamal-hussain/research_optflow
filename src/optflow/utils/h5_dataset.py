@@ -15,6 +15,7 @@ class H5Sample:
             sample[key] = self._h5[key][()]
         return sample
 
+
 class H5Dataset:
     def __init__(self, base_path: Path):
         self._base_path = base_path

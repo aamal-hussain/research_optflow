@@ -14,6 +14,7 @@ from optflow.utils.h5_dataset import H5Dataset
 
 _SPLIT = "train"
 
+
 def create_dataloader(
     data_path: Path,
     mode: InferenceMode,
@@ -46,18 +47,13 @@ def generate_latent_dataset(cfg: DictConfig):
     model.encoder_mode()
     model.eval()
 
-
     data_base_path = Path(f"data/{cfg.dataset.name}")
     if not data_base_path.exists() and not data_base_path.is_dir():
         raise FileNotFoundError(
             f"Dataset path {data_base_path} does not exist or is not a directory."
         )
     data_path = data_base_path / _SPLIT
-    dataloader = create_dataloader(
-        data_path=data_path,
-        mode=model.mode,
-        cfg=cfg
-    )
+    dataloader = create_dataloader(data_path=data_path, mode=model.mode, cfg=cfg)
 
     samples = {}
 
@@ -78,8 +74,9 @@ def generate_latent_dataset(cfg: DictConfig):
             std = torch.exp(0.5 * logvar)
             latents = mean + std * torch.randn_like(mean)
 
-            samples[str(i).zfill(5)] = {"latents": latents.detach().cpu().numpy().squeeze()}
-
+            samples[str(i).zfill(5)] = {
+                "latents": latents.detach().cpu().numpy().squeeze()
+            }
 
     latents_data_path = Path("data/") / "latents" / _SPLIT
     latents_data_path.mkdir(parents=True, exist_ok=True)
@@ -89,6 +86,7 @@ def generate_latent_dataset(cfg: DictConfig):
         f.close()
 
     print(f"Latent dataset saved to {latents_data_path}")
+
 
 if __name__ == "__main__":
     generate_latent_dataset()

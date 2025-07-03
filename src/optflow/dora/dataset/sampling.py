@@ -125,9 +125,7 @@ def sample_coarse_points_and_normals(
     return points, normals
 
 
-def get_edges_and_adjacent_faces(
-    faces: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
+def get_edges_and_adjacent_faces(faces: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Get edges and adjacent faces from a mesh.
 
     Args:
@@ -153,15 +151,6 @@ def get_edges_and_adjacent_faces(
     face_indices = face_indices[idx]
 
     closed_edge_idx = np.where(np.all(np.diff(edges, axis=0) == 0, axis=1))[0]
-
-    number_closed_edges = len(closed_edge_idx)
-    number_open_edges = len(edges) - 2 * number_closed_edges
-
-    if number_open_edges != 0:
-        logging.warning(
-            f"{number_open_edges} out of {number_open_edges+number_closed_edges} edges are open."
-            "Proceeding with sampling, but results may be affected."
-        )
 
     edges = edges[closed_edge_idx]
     adjacent_faces = np.stack(
@@ -197,7 +186,9 @@ def get_sharp_edges_with_normals(
     edge_angles = np.rad2deg(np.arccos(np.clip(edge_cos_angles, -1.0, 1.0)))
     mean_edge_normals = edge_normals.mean(axis=1)
     mean_edge_normal_lengths = np.linalg.norm(mean_edge_normals, axis=-1)
-    mean_edge_normals /= mean_edge_normal_lengths[:, np.newaxis]
+    mean_edge_normals /= (
+        mean_edge_normal_lengths[:, np.newaxis] + 1e-6
+    )  # Add small value to stabilise division
     edge_is_sharp = (edge_angles >= minimum_sharp_edge_angle) & (mean_edge_normal_lengths > epsilon)
     sharp_edges = edges[edge_is_sharp]
     sharp_edge_normals = mean_edge_normals[edge_is_sharp]
