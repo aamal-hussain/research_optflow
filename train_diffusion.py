@@ -5,7 +5,7 @@ from tqdm import tqdm, trange
 
 import hydra
 import torch
-from torch.optim import AdamW
+from schedulefree.adamw_schedulefree import AdamWScheduleFree
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 import mlflow
@@ -82,10 +82,8 @@ def setup_training_artifacts(cfg: DictConfig) -> LatentTransformer:
         device=cfg.device,
     )
 
-    optimizer = AdamW(
-        model.parameters(),
-        lr=cfg.optimizer.lr,
-        weight_decay=cfg.optimizer.weight_decay,
+    optimizer = AdamWScheduleFree(
+        model.parameters(), cfg.optimizer.lr, weight_decay=cfg.optimizer.weight_decay
     )
 
     return model, scheduler, optimizer
@@ -105,6 +103,7 @@ def train(
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
+                batch_losses = deque(maxlen=100)
                 for batch in train_bar:
                     latents = get_latent_from_batch(batch, vae, cfg.device)
                     t = torch.randint(
@@ -125,6 +124,7 @@ def train(
                         breakpoint()
 
                     training_losses.append(loss.item())
+                    batch_losses.append(loss.item())
                     train_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
@@ -135,6 +135,7 @@ def train(
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
+                batch_losses = deque(maxlen=100)
                 for batch in val_bar:
                     latents = get_latent_from_batch(batch, vae, cfg.device)
                     t = torch.randint(
@@ -148,6 +149,7 @@ def train(
                     pred_noise = model(latents_corrupted, t.unsqueeze(-1))
                     loss = torch.nn.functional.mse_loss(pred_noise, noise)
 
+                    batch_losses.append(loss.item())
                     validation_losses.append(loss.item())
                     val_bar.set_postfix(
                         {

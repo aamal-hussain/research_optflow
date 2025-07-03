@@ -20,7 +20,8 @@ dependencies = [
     "tqdm",
     "mlflow",
     "ruff",
-    "pre-commit"
+    "pre-commit",
+    "schedulefree"
 ]
 
 [tool.setuptools.dynamic.version]
