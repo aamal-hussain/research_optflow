@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 from pathlib import Path
 import numpy as np
@@ -16,11 +17,13 @@ from optflow.dora.dataset.dataset import DoraDataset
 from optflow.dora.model import DoraVAE, InferenceMode
 from optflow.utils.h5_dataset import H5Dataset
 
+LOGGER = logging.getLogger(__name__)
 
 def create_dataloader(
     data_path: Path,
     mode: InferenceMode,
     cfg: DictConfig,
+    shuffle: bool
 ):
     if (
         not data_path.exists()
@@ -37,7 +40,7 @@ def create_dataloader(
         dataset,
         batch_size=cfg.batch_size,
         num_workers=cfg.dataset.num_workers,
-        shuffle=False,
+        shuffle=shuffle,
         pin_memory=True,
     )
 
@@ -99,38 +102,6 @@ def train(
         cfg.n_epochs, desc="Training", unit="epoch", dynamic_ncols=True
     ) as pbar:
         for epoch in pbar:
-            model.train()
-            with tqdm(
-                train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
-            ) as train_bar:
-                batch_losses = deque(maxlen=100)
-                for batch in train_bar:
-                    latents = get_latent_from_batch(batch, vae, cfg.device)
-                    t = torch.randint(
-                        0,
-                        noise_scheduler.num_timesteps,
-                        (latents.shape[0],),
-                        device=latents.device,
-                    )
-                    noise = torch.randn_like(latents)
-                    latents_corrupted = noise_scheduler.add_noise(latents, noise, t)
-                    pred_noise = model(latents_corrupted, t.unsqueeze(-1))
-                    optimizer.zero_grad()
-                    loss = torch.nn.functional.mse_loss(pred_noise, noise)
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                    optimizer.step()
-                    if torch.any(loss.isnan()):
-                        breakpoint()
-
-                    training_losses.append(loss.item())
-                    batch_losses.append(loss.item())
-                    train_bar.set_postfix(
-                        {
-                            "batch_loss": f"{loss.item():.4f}",
-                        }
-                    )
-            mlflow.log_metric("train_loss", loss.item())
             model.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
@@ -156,6 +127,39 @@ def train(
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
+            model.train()
+            with tqdm(
+                train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
+            ) as train_bar:
+                batch_losses = deque(maxlen=100)
+                for batch in train_bar:
+                    latents = get_latent_from_batch(batch, vae, cfg.device)
+                    t = torch.randint(
+                        0,
+                        noise_scheduler.num_timesteps,
+                        (latents.shape[0],),
+                        device=latents.device,
+                    )
+                    noise = torch.randn_like(latents)
+                    latents_corrupted = noise_scheduler.add_noise(latents, noise, t)
+                    pred_noise = model(latents_corrupted, t.unsqueeze(-1))
+                    optimizer.zero_grad()
+                    loss = torch.nn.functional.mse_loss(pred_noise, noise)
+                    if torch.any(loss.isnan()):
+                        LOGGER.info("NaN encountered in loss, breaking.")
+                        breakpoint()
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    optimizer.step()
+
+                    training_losses.append(loss.item())
+                    batch_losses.append(loss.item())
+                    train_bar.set_postfix(
+                        {
+                            "batch_loss": f"{loss.item():.4f}",
+                        }
+                    )
+            mlflow.log_metric("train_loss", loss.item())
 
             mlflow.log_metric("val_loss", loss.item())
             pbar.set_postfix(
@@ -181,8 +185,12 @@ def train_diffusion_model(cfg: DictConfig):
         checkpoint_path=cfg.vae.checkpoint_path
     ).to(cfg.device)
     vae.encoder_mode()
+    vae.eval()
 
+
+    LOGGER.info(f"VAE model has {sum(p.numel() for p in vae.parameters())} parameters.")
     model, noise_scheduler, optimizer = setup_training_artifacts(cfg)
+    LOGGER.info(f"Diffusion model has {sum(p.numel() for p in model.parameters())} parameters.")
 
     data_base_path = Path(f"data/{cfg.dataset.name}")
     if not data_base_path.exists() and not data_base_path.is_dir():
@@ -191,14 +199,13 @@ def train_diffusion_model(cfg: DictConfig):
         )
     train_data_path = data_base_path / "train"
     train_dataloader = create_dataloader(
-        data_path=train_data_path, mode=vae.mode, cfg=cfg
+        data_path=train_data_path, mode=vae.mode, cfg=cfg, shuffle=False
     )
     val_data_path = data_base_path / "test"
-    val_dataloader = create_dataloader(data_path=val_data_path, mode=vae.mode, cfg=cfg)
+    val_dataloader = create_dataloader(data_path=val_data_path, mode=vae.mode, cfg=cfg, shuffle=False)
 
-    mlflow.set_experiment("Diffusion Training")
-
-    with mlflow.start_run():
+    mlflow.set_experiment(cfg.experiment_name)
+    with mlflow.start_run(run_name=cfg.run_name):
         mlflow.log_params(cfg)
         model = train(
             cfg,

@@ -1,3 +1,4 @@
+import logging
 import os
 import h5py
 import numpy as np
@@ -11,43 +12,42 @@ from tqdm import tqdm
 _BASE_PATH = Path("/mnt/storage01/workspace/research/gen11/shapenet_13")
 _H5_Path = _BASE_PATH / "car_dataset"
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def process_files(pth: Path):
+def process_file(pth: Path):
+    name = pth.parent.stem
+
     try:
-        name = pth.parent.stem
         mesh = pv.read(pth)
+    except Exception as e:
+        logging.error(f"Failed to read mesh {pth}: {e}")
+        raise
 
-        if not mesh.is_manifold:
-            meshfix = mf.MeshFix(mesh)
-            meshfix.repair(verbose=False)
-            fixed_mesh = meshfix.mesh
-            if fixed_mesh.is_manifold:
-                mesh = fixed_mesh
-            else:
-                raise ValueError("Skipping this mesh as it is not manifold")
+    if not mesh.is_manifold:
+        return
+    mesh = mesh.compute_cell_sizes(length=False, area=True, volume=False)
+    mesh = mesh.compute_normals(cell_normals=True, point_normals=False)
+    mesh_data = {
+        "mesh.verts": np.asarray(mesh.points),
+        "mesh.faces": np.asarray(mesh.regular_faces),
+        "mesh.verts_normals": np.asarray(mesh.point_normals),
+        "mesh.faces_normals": np.asarray(mesh.cell_normals),
+        "mesh.areas": np.asarray(mesh.cell_data["Area"]),
+    }
 
+    if np.random.rand() < 0.8:
+        split = "train"
+    else:
+        split = "test"
 
-        mesh = mesh.compute_cell_sizes(length=False, area=True, volume=False)
-        mesh = mesh.compute_normals(cell_normals=True, point_normals=False)
-        mesh_data = {
-            "mesh.verts": mesh.points,
-            "mesh.faces": mesh.regular_faces,
-            "mesh.verts_normals": mesh.point_normals,
-            "mesh.faces_normals": mesh.cell_normals,
-            "mesh.areas": mesh.cell_data["Area"],
-        }
-
-        if np.random.rand() < 0.8:
-            split = "train"
-        else:
-            split = "test"
-
-        with h5py.File(_H5_Path / split / f"{name}.h5", "w") as f:
+    output_file_path = _H5_Path / split / f"{name}.h5"
+    try:
+        with h5py.File(output_file_path, "w") as f:
             for key, value in mesh_data.items():
                 f.create_dataset(key, data=value)
-
     except Exception as e:
-        raise ValueError(f"Error processing file {pth}: {e}") from e
+        logging.error(f"Failed to write HDF5 for {pth} to {output_file_path}: {e}")
+        raise
 
     return
 
@@ -59,14 +59,14 @@ if __name__ == "__main__":
 
     _CAR_PATH = _BASE_PATH / "02958343"
     files = list(_CAR_PATH.rglob("*.obj"))
+    logging.info(f"Found {len(files)} .obj files to process.")
 
     with ThreadPoolExecutor() as exec:
-        futures = {exec.submit(process_files, f): f for f in files}
-        for future in tqdm(as_completed(futures), total=len(futures)):
+        futures = {exec.submit(process_file, f): f for f in files}
+        for future in tqdm(as_completed(futures), total=len(files)):
             file = futures[future]
             try:
                 future.result()
             except Exception as e:
-                print(f"FAILED processing {file}: {e}")
-
-    print("All files processed and saved to HDF5 format.")
+                logging.info(f"FAILED processing {file}: {e}")
+    logging.info("All files processed.")
