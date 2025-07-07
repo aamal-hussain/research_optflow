@@ -20,11 +20,9 @@ from optflow.utils.h5_dataset import H5Dataset
 
 LOGGER = logging.getLogger(__name__)
 
+
 def create_dora_dataloader(
-    data_path: Path,
-    mode: InferenceMode,
-    cfg: DictConfig,
-    shuffle: bool
+    data_path: Path, mode: InferenceMode, cfg: DictConfig, shuffle: bool
 ):
     if (
         not data_path.exists()
@@ -45,11 +43,8 @@ def create_dora_dataloader(
         pin_memory=True,
     )
 
-def create_latent_dataloader(
-    data_path: Path,
-    cfg: DictConfig,
-    shuffle: bool
-):
+
+def create_latent_dataloader(data_path: Path, cfg: DictConfig, shuffle: bool):
     if (
         not data_path.exists()
         and not data_path.is_dir()
@@ -134,7 +129,11 @@ def train(
             ) as train_bar:
                 batch_losses = deque(maxlen=100)
                 for batch in train_bar:
-                    latents = get_latent_from_batch(batch, vae, cfg.device) if vae else batch.to(cfg.device)
+                    latents = (
+                        get_latent_from_batch(batch, vae, cfg.device)
+                        if vae
+                        else batch.to(cfg.device)
+                    )
                     t = torch.randint(
                         0,
                         noise_scheduler.num_timesteps,
@@ -168,7 +167,11 @@ def train(
             ) as val_bar:
                 batch_losses = deque(maxlen=100)
                 for batch in val_bar:
-                    latents = get_latent_from_batch(batch, vae, cfg.device) if vae else batch.to(cfg.device)
+                    latents = (
+                        get_latent_from_batch(batch, vae, cfg.device)
+                        if vae
+                        else batch.to(cfg.device)
+                    )
                     t = torch.randint(
                         0,
                         noise_scheduler.num_timesteps,
@@ -208,10 +211,10 @@ def train(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def train_diffusion_model(cfg: DictConfig):
-    
-    
     model, noise_scheduler, optimizer = setup_training_artifacts(cfg)
-    LOGGER.info(f"Diffusion model has {sum(p.numel() for p in model.parameters())} parameters.")
+    LOGGER.info(
+        f"Diffusion model has {sum(p.numel() for p in model.parameters())} parameters."
+    )
 
     data_base_path = Path(f"data/{cfg.dataset.name}")
     if not data_base_path.exists() and not data_base_path.is_dir():
@@ -227,11 +230,15 @@ def train_diffusion_model(cfg: DictConfig):
         ).to(cfg.device)
         vae.encoder_mode()
         vae.eval()
-        LOGGER.info(f"VAE model has {sum(p.numel() for p in vae.parameters())} parameters.")
+        LOGGER.info(
+            f"VAE model has {sum(p.numel() for p in vae.parameters())} parameters."
+        )
         train_dataloader = create_dora_dataloader(
             data_path=train_data_path, mode=vae.mode, cfg=cfg, shuffle=True
         )
-        val_dataloader = create_dora_dataloader(data_path=val_data_path, mode=vae.mode, cfg=cfg, shuffle=False)
+        val_dataloader = create_dora_dataloader(
+            data_path=val_data_path, mode=vae.mode, cfg=cfg, shuffle=False
+        )
 
     else:
         vae = None

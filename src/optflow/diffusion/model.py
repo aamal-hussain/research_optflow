@@ -94,6 +94,7 @@ class LatentTransformer(nn.Module):
         x = self.projection(x)
         return x
 
+
 class Policy(nn.Module):
     def __init__(self, t_channels, x_channels):
         super().__init__()

@@ -18,11 +18,9 @@ from optflow.utils.h5_dataset import H5Dataset
 
 LOGGER = logging.getLogger(__name__)
 
+
 def create_dora_dataloader(
-    data_path: Path,
-    mode: InferenceMode,
-    cfg: DictConfig,
-    shuffle: bool
+    data_path: Path, mode: InferenceMode, cfg: DictConfig, shuffle: bool
 ):
     if (
         not data_path.exists()
@@ -43,6 +41,7 @@ def create_dora_dataloader(
         pin_memory=True,
     )
 
+
 def get_sdf_and_entropy_from_batch(
     batch: dict[str, torch.Tensor], vae: DoraVAE, device: str
 ) -> torch.Tensor:
@@ -58,13 +57,11 @@ def get_sdf_and_entropy_from_batch(
         sharp_pc=sharp_pc,
         sharp_feats=sharp_feats,
         query_points=query_points,
-        sample_posterior=True
+        sample_posterior=True,
     )
 
 
-def train(
-    cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn
-):
+def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
     training_losses = deque(maxlen=100)
     validation_losses = deque(maxlen=100)
     best_loss = np.inf
@@ -79,9 +76,15 @@ def train(
             ) as train_bar:
                 batch_losses = deque(maxlen=100)
                 for batch in train_bar:
-                    sdf, entropy = get_sdf_and_entropy_from_batch(batch, model, cfg.device)
+                    sdf, entropy = get_sdf_and_entropy_from_batch(
+                        batch, model, cfg.device
+                    )
 
-                    sdf_loss = loss_fn(input=sdf, target=batch["sdf"].unsqueeze(-1).to(cfg.device), var=model.var.exp().expand(*sdf.shape)) 
+                    sdf_loss = loss_fn(
+                        input=sdf,
+                        target=batch["sdf"].unsqueeze(-1).to(cfg.device),
+                        var=model.var.exp().expand(*sdf.shape),
+                    )
                     entropy_loss = entropy
                     loss = sdf_loss + entropy_loss
                     if torch.any(loss.isnan()):
@@ -109,8 +112,14 @@ def train(
             ) as val_bar:
                 batch_losses = deque(maxlen=100)
                 for batch in val_bar:
-                    sdf, entropy = get_sdf_and_entropy_from_batch(batch, model, cfg.device)
-                    sdf_loss = loss_fn(input=sdf, target=batch["sdf"].to(cfg.device), var=model.var.exp().expand(*sdf.shape)) 
+                    sdf, entropy = get_sdf_and_entropy_from_batch(
+                        batch, model, cfg.device
+                    )
+                    sdf_loss = loss_fn(
+                        input=sdf,
+                        target=batch["sdf"].to(cfg.device),
+                        var=model.var.exp().expand(*sdf.shape),
+                    )
                     entropy_loss = entropy
                     loss = sdf_loss + entropy_loss
 
@@ -144,14 +153,17 @@ def train(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def train_dora_model(cfg: DictConfig):
-    
-    model = DoraVAE(**{k: v for k, v in cfg.vae.items() if k != "checkpoint_path"}).to(cfg.device)
+    model = DoraVAE(**{k: v for k, v in cfg.vae.items() if k != "checkpoint_path"}).to(
+        cfg.device
+    )
 
     optimizer = AdamWScheduleFree(
         model.parameters(), cfg.optimizer.lr, weight_decay=cfg.optimizer.weight_decay
     )
 
-    LOGGER.info(f"VAE model has {sum(p.numel() for p in model.parameters())} parameters.")
+    LOGGER.info(
+        f"VAE model has {sum(p.numel() for p in model.parameters())} parameters."
+    )
 
     data_base_path = Path(f"data/{cfg.dataset.name}")
     if not data_base_path.exists() and not data_base_path.is_dir():
@@ -160,11 +172,13 @@ def train_dora_model(cfg: DictConfig):
         )
     train_data_path = data_base_path / "train"
     val_data_path = data_base_path / "test"
- 
+
     train_dataloader = create_dora_dataloader(
         data_path=train_data_path, mode=model.mode, cfg=cfg, shuffle=True
     )
-    val_dataloader = create_dora_dataloader(data_path=val_data_path, mode=model.mode, cfg=cfg, shuffle=False)
+    val_dataloader = create_dora_dataloader(
+        data_path=val_data_path, mode=model.mode, cfg=cfg, shuffle=False
+    )
 
     mlflow.set_experiment(cfg.experiment_name)
     with mlflow.start_run(run_name=cfg.run_name):
@@ -175,7 +189,7 @@ def train_dora_model(cfg: DictConfig):
             val_dataloader,
             model,
             optimizer,
-            loss_fn = torch.nn.GaussianNLLLoss(full=True, reduction="sum")
+            loss_fn=torch.nn.GaussianNLLLoss(full=True, reduction="sum"),
         )
 
     return model

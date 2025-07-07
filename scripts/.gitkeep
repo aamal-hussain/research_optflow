@@ -1,2 +1,2 @@
-make_dataset.py
-reconstruct_mesh.py
+./make_dataset.py
+./reconstruct_mesh.py
