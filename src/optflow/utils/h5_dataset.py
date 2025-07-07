@@ -10,7 +10,7 @@ class H5Sample:
         self._h5 = h5py.File(file, "r")
 
     def __call__(self) -> dict[str, np.ndarray]:
-        sample = {}
+        sample = {'name': self._file.stem}
         for key in self._h5.keys():
             sample[key] = self._h5[key][()]
         return sample

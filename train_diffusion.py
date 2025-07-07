@@ -69,7 +69,7 @@ def get_latent_from_batch(
 def setup_training_artifacts(cfg: DictConfig) -> LatentTransformer:
     model = LatentTransformer(
         in_channels=cfg.diffusion.model.in_channels,
-        inner_product_channels=cfg.diffusion.model.inner_product_channels,
+        width=cfg.diffusion.model.width,
         out_channels=cfg.diffusion.model.in_channels,  # out_channels should match in_channels
         num_heads=cfg.diffusion.model.num_heads,
         depth=cfg.diffusion.model.depth,
@@ -102,31 +102,6 @@ def train(
         cfg.n_epochs, desc="Training", unit="epoch", dynamic_ncols=True
     ) as pbar:
         for epoch in pbar:
-            model.eval()
-            with tqdm(
-                val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
-            ) as val_bar:
-                batch_losses = deque(maxlen=100)
-                for batch in val_bar:
-                    latents = get_latent_from_batch(batch, vae, cfg.device)
-                    t = torch.randint(
-                        0,
-                        noise_scheduler.num_timesteps,
-                        (latents.shape[0],),
-                        device=latents.device,
-                    )
-                    noise = torch.randn_like(latents)
-                    latents_corrupted = noise_scheduler.add_noise(latents, noise, t)
-                    pred_noise = model(latents_corrupted, t.unsqueeze(-1))
-                    loss = torch.nn.functional.mse_loss(pred_noise, noise)
-
-                    batch_losses.append(loss.item())
-                    validation_losses.append(loss.item())
-                    val_bar.set_postfix(
-                        {
-                            "batch_loss": f"{loss.item():.4f}",
-                        }
-                    )
             model.train()
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
@@ -160,6 +135,31 @@ def train(
                         }
                     )
             mlflow.log_metric("train_loss", loss.item())
+            model.eval()
+            with tqdm(
+                val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
+            ) as val_bar:
+                batch_losses = deque(maxlen=100)
+                for batch in val_bar:
+                    latents = get_latent_from_batch(batch, vae, cfg.device)
+                    t = torch.randint(
+                        0,
+                        noise_scheduler.num_timesteps,
+                        (latents.shape[0],),
+                        device=latents.device,
+                    )
+                    noise = torch.randn_like(latents)
+                    latents_corrupted = noise_scheduler.add_noise(latents, noise, t)
+                    pred_noise = model(latents_corrupted, t.unsqueeze(-1))
+                    loss = torch.nn.functional.mse_loss(pred_noise, noise)
+
+                    batch_losses.append(loss.item())
+                    validation_losses.append(loss.item())
+                    val_bar.set_postfix(
+                        {
+                            "batch_loss": f"{loss.item():.4f}",
+                        }
+                    )
 
             mlflow.log_metric("val_loss", loss.item())
             pbar.set_postfix(

@@ -113,7 +113,7 @@ class DoraDataset(Dataset):
         processed_sample = {
             k: torch.from_numpy(v).to(dtype=torch.float32) for k, v in processed_sample.items()
         }
-        return processed_sample
+        return processed_sample | {"name": sample.get("name", "Unknown")}
 
 
 def calculate_center_and_scale_of_mesh(verts: np.ndarray) -> tuple[np.ndarray, float]:

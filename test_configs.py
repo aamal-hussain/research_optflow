@@ -1,10 +1,3 @@
-"""We have three components to this model:
-1. Dora decoder - used for terminal cost
-2. Dora encoder - used to generate manifold for path cost
-3. Diffusion model - used to generate the path. It looks like neither dora nor 3DShape2VecSet provides a diffusion model,
-so I will build one from scratch.
-"""
-
 import hydra
 import torch
 from omegaconf import DictConfig
@@ -18,7 +11,7 @@ from optflow.dora import DoraVAE
 def test_diffusion(cfg: DictConfig) -> None:
     model = LatentTransformer(
         in_channels=cfg.diffusion.model.in_channels,
-        inner_product_channels=cfg.diffusion.model.inner_product_channels,
+        width=cfg.diffusion.model.width,
         out_channels=cfg.diffusion.model.in_channels,  # out_channels should match in_channels
         num_heads=cfg.diffusion.model.num_heads,
         depth=cfg.diffusion.model.depth,

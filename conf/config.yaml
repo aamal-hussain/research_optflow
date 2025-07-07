@@ -5,7 +5,7 @@ batch_size: 1
 sequence_length: 2048
 n_epochs: 1000
 optimizer:
-  lr: 5e-4
+  lr: 1e-4
   weight_decay: 1e-4
 device: "cuda"
 dataset:
@@ -22,9 +22,9 @@ dataset:
 diffusion:
   model:
     in_channels: 64
-    inner_product_channels: 64
-    num_heads: 8
-    depth: 12
+    width: 128
+    num_heads: 2
+    depth: 4
     num_freqs: 8
     include_pi: false
   noise_scheduler:
