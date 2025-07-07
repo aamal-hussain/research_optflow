@@ -1,0 +1,10 @@
+name: "shapenet_car"
+num_workers: 16
+params:
+  verts_key: "mesh.verts"
+  faces_key: "mesh.faces"
+  areas_key: "mesh.areas"
+  faces_normals_key: "mesh.faces_normals"
+  num_input_points: 32_768
+  num_query_points: 32_768
+  minimum_sharp_edge_angle: 15.0
