@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 import mlflow
 
+from optflow.diffusion.latent_dataset import LatentDataset
 from optflow.diffusion.model import LatentTransformer
 from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora.dataset.dataset import DoraDataset
@@ -19,7 +20,7 @@ from optflow.utils.h5_dataset import H5Dataset
 
 LOGGER = logging.getLogger(__name__)
 
-def create_dataloader(
+def create_dora_dataloader(
     data_path: Path,
     mode: InferenceMode,
     cfg: DictConfig,
@@ -36,6 +37,30 @@ def create_dataloader(
 
     data = H5Dataset(data_path)
     dataset = DoraDataset(data=data, mode=mode, **cfg.dataset.params)
+    return DataLoader(
+        dataset,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.dataset.num_workers,
+        shuffle=shuffle,
+        pin_memory=True,
+    )
+
+def create_latent_dataloader(
+    data_path: Path,
+    cfg: DictConfig,
+    shuffle: bool
+):
+    if (
+        not data_path.exists()
+        and not data_path.is_dir()
+        and not any(data_path.glob("*.h5"))
+    ):
+        raise FileNotFoundError(
+            f"Dataset path {data_path} does not exist or is not a directory with .h5 files."
+        )
+
+    data = H5Dataset(data_path)
+    dataset = LatentDataset(data=data, **cfg.dataset.params)
     return DataLoader(
         dataset,
         batch_size=cfg.batch_size,
@@ -103,12 +128,13 @@ def train(
     ) as pbar:
         for epoch in pbar:
             model.train()
+            optimizer.train()
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
                 batch_losses = deque(maxlen=100)
                 for batch in train_bar:
-                    latents = get_latent_from_batch(batch, vae, cfg.device)
+                    latents = get_latent_from_batch(batch, vae, cfg.device) if vae else batch.to(cfg.device)
                     t = torch.randint(
                         0,
                         noise_scheduler.num_timesteps,
@@ -136,12 +162,13 @@ def train(
                     )
             mlflow.log_metric("train_loss", loss.item())
             model.eval()
+            optimizer.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
                 batch_losses = deque(maxlen=100)
                 for batch in val_bar:
-                    latents = get_latent_from_batch(batch, vae, cfg.device)
+                    latents = get_latent_from_batch(batch, vae, cfg.device) if vae else batch.to(cfg.device)
                     t = torch.randint(
                         0,
                         noise_scheduler.num_timesteps,
@@ -181,14 +208,8 @@ def train(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def train_diffusion_model(cfg: DictConfig):
-    vae = DoraVAE.from_pretrained_checkpoint(
-        checkpoint_path=cfg.vae.checkpoint_path
-    ).to(cfg.device)
-    vae.encoder_mode()
-    vae.eval()
-
-
-    LOGGER.info(f"VAE model has {sum(p.numel() for p in vae.parameters())} parameters.")
+    
+    
     model, noise_scheduler, optimizer = setup_training_artifacts(cfg)
     LOGGER.info(f"Diffusion model has {sum(p.numel() for p in model.parameters())} parameters.")
 
@@ -198,11 +219,29 @@ def train_diffusion_model(cfg: DictConfig):
             f"Dataset path {data_base_path} does not exist or is not a directory."
         )
     train_data_path = data_base_path / "train"
-    train_dataloader = create_dataloader(
-        data_path=train_data_path, mode=vae.mode, cfg=cfg, shuffle=False
-    )
     val_data_path = data_base_path / "test"
-    val_dataloader = create_dataloader(data_path=val_data_path, mode=vae.mode, cfg=cfg, shuffle=False)
+
+    if "latents" not in cfg.dataset.name:
+        vae = DoraVAE.from_pretrained_checkpoint(
+            checkpoint_path=cfg.vae.checkpoint_path
+        ).to(cfg.device)
+        vae.encoder_mode()
+        vae.eval()
+        LOGGER.info(f"VAE model has {sum(p.numel() for p in vae.parameters())} parameters.")
+        train_dataloader = create_dora_dataloader(
+            data_path=train_data_path, mode=vae.mode, cfg=cfg, shuffle=True
+        )
+        val_dataloader = create_dora_dataloader(data_path=val_data_path, mode=vae.mode, cfg=cfg, shuffle=False)
+
+    else:
+        vae = None
+        LOGGER.info("Not using a VAE model - using latents directly")
+        train_dataloader = create_latent_dataloader(
+            data_path=train_data_path, cfg=cfg, shuffle=True
+        )
+        val_dataloader = create_latent_dataloader(
+            data_path=val_data_path, cfg=cfg, shuffle=False
+        )
 
     mlflow.set_experiment(cfg.experiment_name)
     with mlflow.start_run(run_name=cfg.run_name):
