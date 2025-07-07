@@ -9,16 +9,11 @@ optimizer:
   weight_decay: 1e-4
 device: "cuda"
 dataset:
-  name: "shapenet_car"
+  name: "luminary_latents"
   num_workers: 16
   params:
-    verts_key: "mesh.verts"
-    faces_key: "mesh.faces"
-    areas_key: "mesh.areas"
-    faces_normals_key: "mesh.faces_normals"
-    num_input_points: 32_768
-    num_query_points: 32_768
-    minimum_sharp_edge_angle: 15.0
+    mean_key: "latent.dora.2048.mean"
+    logvar_key: "latent.dora.2048.log_variance"
 diffusion:
   model:
     in_channels: 64

@@ -41,6 +41,6 @@ clean:
 	@rm -rf **/__pycache__
 
 debug:
-	@echo "Credentials exists check: $(wildcard ./conf/local/pxs_credentials)"
+	@echo "Credentials exists check: $(wildcard .pxs_credentials)"
 	@echo "USER_NAME: '$(ARTIFACTORY_USER_NAME)'"
 	@echo "ACCESS_TOKEN: '$(ARTIFACTORY_ACCESS_TOKEN)'"
