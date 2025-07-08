@@ -9,7 +9,7 @@ from optflow.dora.attention import ResidualCrossAttentionBlock
 class DoraDecoder(nn.Module):
     def __init__(
         self,
-        out_dim: int,
+        out_dims: int,
         width: int,
         num_heads: int,
         num_freqs: int,
@@ -36,7 +36,7 @@ class DoraDecoder(nn.Module):
         )
 
         self.ln_post = nn.LayerNorm(width)
-        self.output_proj = nn.Linear(width, out_dim)
+        self.output_proj = nn.Linear(width, out_dims)
 
     def _forward(self, queries: torch.FloatTensor, latents: torch.FloatTensor):
         queries = self.query_proj(self.embedder(queries))

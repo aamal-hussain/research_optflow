@@ -3,6 +3,7 @@ from enum import Enum
 
 import torch
 from torch import nn
+from torch.distributions import Normal
 
 from optflow.dora.attention import Perceiver
 from optflow.dora.decoder import DoraDecoder
@@ -35,7 +36,7 @@ class DoraVAE(nn.Module):
         point_feature_channels: int,
         latent_sequence_length: int,
         embed_dim: int,
-        out_dim: int,
+        out_dims: int,
         width: int,
         num_heads: int,
         num_freqs: int,
@@ -44,6 +45,7 @@ class DoraVAE(nn.Module):
         decoder_depth: int,
         qkv_bias: bool,
         use_checkpoint: bool,
+        learn_var: bool,
     ):
         super().__init__()
 
@@ -74,7 +76,7 @@ class DoraVAE(nn.Module):
         )
 
         self.decoder = DoraDecoder(
-            out_dim=out_dim,
+            out_dims=out_dims,
             width=width,
             num_heads=num_heads,
             num_freqs=num_freqs,
@@ -82,6 +84,10 @@ class DoraVAE(nn.Module):
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
         )
+
+        if learn_var:
+            self.var = nn.Parameter(torch.empty(1))
+            nn.init.constant(self.var, -3.0)
 
     def encoder_mode(self):
         """Set the model to encoder mode."""
@@ -114,6 +120,7 @@ class DoraVAE(nn.Module):
             decoder_depth=16,
             qkv_bias=False,
             use_checkpoint=True,
+            learn_var=False,
         )
         model.load_state_dict(state_dict)
         return model
@@ -148,15 +155,22 @@ class DoraVAE(nn.Module):
                 moments = self.pre_kl(shape_latents)
                 mu, logvar = torch.chunk(moments, 2, dim=-1)
                 logvar = logvar.clamp(min=-30.0, max=20.0)
+
                 if sample_posterior:
                     std = torch.exp(0.5 * logvar)
                     sample = torch.randn_like(std)
                     z = mu + sample * std
+
+                    post_dist = Normal(loc=mu, scale=torch.exp(0.5 * logvar))
+                    prior_dist = Normal(loc=torch.zeros_like(mu), scale=torch.ones_like(logvar))
+                    entropy = post_dist.log_prob(z).sum() - prior_dist.log_prob(z).sum()
                 else:
                     z = mu
+                    entropy = None
+
                 z = self.post_kl(z)
                 z = self.transformer(z)
-                return self.decoder(query_points, z)
+                return self.decoder(query_points, z), entropy
             case InferenceMode.ENCODER:
                 if coarse_pc is None or coarse_feats is None:
                     raise ValueError("coarse_pc and coarse_feats must be provided in ENCODER mode.")
