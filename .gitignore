@@ -6,3 +6,6 @@ outputs/
 data/
 mlruns/
 scripts/**
+!scripts/make_dataset.py
+!scripts/reconstruct_mesh.py
+!scripts/generate_latent_dataset.py
