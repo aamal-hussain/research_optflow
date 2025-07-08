@@ -15,14 +15,14 @@ from optflow.diffusion.latent_dataset import LatentDataset
 from optflow.diffusion.model import LatentTransformer
 from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora.dataset.dataset import DoraDataset
-from optflow.dora.model import DoraVAE, InferenceMode
+from optflow.dora.model import DoraVAE, VAEMode
 from optflow.utils.h5_dataset import H5Dataset
 
 LOGGER = logging.getLogger(__name__)
 
 
 def create_dora_dataloader(
-    data_path: Path, mode: InferenceMode, cfg: DictConfig, shuffle: bool
+    data_path: Path, mode: VAEMode, cfg: DictConfig, shuffle: bool
 ):
     if (
         not data_path.exists()

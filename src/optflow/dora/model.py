@@ -12,7 +12,7 @@ from optflow.dora.encoder import DoraEncoder
 LOGGER = logging.getLogger(__name__)
 
 
-class InferenceMode(Enum):
+class VAEMode(Enum):
     """Enumeration for different inference modes of the DoraVAE model."""
 
     DEFAULT = "default"
@@ -49,7 +49,7 @@ class DoraVAE(nn.Module):
     ):
         super().__init__()
 
-        self.mode = InferenceMode.DEFAULT
+        self.mode = VAEMode.DEFAULT
         self.encoder = DoraEncoder(
             point_feature_channels=point_feature_channels,
             latent_sequence_length=latent_sequence_length,
@@ -91,15 +91,15 @@ class DoraVAE(nn.Module):
 
     def encoder_mode(self):
         """Set the model to encoder mode."""
-        self.mode = InferenceMode.ENCODER
+        self.mode = VAEMode.ENCODER
 
     def decoder_mode(self):
         """Set the model to decoder mode."""
-        self.mode = InferenceMode.DECODER
+        self.mode = VAEMode.DECODER
 
     def default_mode(self):
         """Set the model to default mode."""
-        self.mode = InferenceMode.DEFAULT
+        self.mode = VAEMode.DEFAULT
 
     @classmethod
     def from_pretrained_checkpoint(
@@ -136,7 +136,7 @@ class DoraVAE(nn.Module):
         sample_posterior: bool = False,
     ) -> torch.Tensor:
         match self.mode:
-            case InferenceMode.DEFAULT:
+            case VAEMode.DEFAULT:
                 if coarse_pc is None or coarse_feats is None:
                     raise ValueError("coarse_pc and coarse_feats must be provided in DEFAULT mode.")
 
@@ -171,7 +171,7 @@ class DoraVAE(nn.Module):
                 z = self.post_kl(z)
                 z = self.transformer(z)
                 return self.decoder(query_points, z), entropy
-            case InferenceMode.ENCODER:
+            case VAEMode.ENCODER:
                 if coarse_pc is None or coarse_feats is None:
                     raise ValueError("coarse_pc and coarse_feats must be provided in ENCODER mode.")
                 if sharp_pc is None or sharp_feats is None:
@@ -191,7 +191,7 @@ class DoraVAE(nn.Module):
                 moments = self.pre_kl(shape_latents)
                 return moments
 
-            case InferenceMode.DECODER:
+            case VAEMode.DECODER:
                 if latents is None:
                     raise ValueError("latents must be provided in DECODER mode.")
                 if query_points is None:

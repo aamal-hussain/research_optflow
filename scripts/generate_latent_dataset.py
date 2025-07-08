@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 
 from optflow.dora.dataset.dataset import DoraDataset
-from optflow.dora.model import DoraVAE, InferenceMode
+from optflow.dora.model import DoraVAE, VAEMode
 from optflow.utils.h5_dataset import H5Dataset
 
 
@@ -17,7 +17,7 @@ _SPLIT = "train"
 
 def create_dataloader(
     data_path: Path,
-    mode: InferenceMode,
+    mode: VAEMode,
     cfg: DictConfig,
 ):
     if (

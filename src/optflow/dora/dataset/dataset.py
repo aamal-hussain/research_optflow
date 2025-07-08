@@ -7,7 +7,7 @@ from optflow.dora.dataset.sampling import (
     sample_points_and_signed_distance,
     sample_sharp_points_and_normals,
 )
-from optflow.dora.model import InferenceMode
+from optflow.dora.model import VAEMode
 from optflow.utils.h5_dataset import H5Dataset
 
 
@@ -15,7 +15,7 @@ class DoraDataset(Dataset):
     def __init__(
         self,
         data: H5Dataset,
-        mode: InferenceMode,
+        mode: VAEMode,
         verts_key: str = "verts",
         faces_key: str = "faces",
         areas_key: str = "areas",
@@ -100,12 +100,12 @@ class DoraDataset(Dataset):
         sample = self._center_and_scale(sample)
         processed_sample = {}
         match self._mode:
-            case InferenceMode.DEFAULT:
+            case VAEMode.DEFAULT:
                 processed_sample |= self._encoder_sample(processed_sample | sample)
                 processed_sample |= self._decoder_sample(processed_sample | sample)
-            case InferenceMode.ENCODER:
+            case VAEMode.ENCODER:
                 processed_sample |= self._encoder_sample(processed_sample | sample)
-            case InferenceMode.DECODER:
+            case VAEMode.DECODER:
                 processed_sample |= self._decoder_sample(processed_sample | sample)
             case _:
                 raise ValueError(f"Unknown mode: {self._mode}")
