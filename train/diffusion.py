@@ -115,8 +115,6 @@ def setup_training_artifacts(cfg: DictConfig) -> LatentTransformer:
 def train(
     cfg, train_dataloader, val_dataloader, vae, model, noise_scheduler, optimizer
 ):
-    training_losses = deque(maxlen=100)
-    validation_losses = deque(maxlen=100)
     best_loss = np.inf
     with trange(
         cfg.n_epochs, desc="Training", unit="epoch", dynamic_ncols=True
@@ -152,14 +150,15 @@ def train(
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     optimizer.step()
 
-                    training_losses.append(loss.item())
                     batch_losses.append(loss.item())
                     train_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
-            mlflow.log_metric("train_loss", loss.item())
+            train_loss = loss.item()
+            mlflow.log_metric("train_loss", train_loss)
+
             model.eval()
             optimizer.eval()
             with tqdm(
@@ -184,32 +183,32 @@ def train(
                     loss = torch.nn.functional.mse_loss(pred_noise, noise)
 
                     batch_losses.append(loss.item())
-                    validation_losses.append(loss.item())
                     val_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
 
-            mlflow.log_metric("val_loss", loss.item())
+            val_loss = loss.item()
+            mlflow.log_metric("val_loss", val_loss)
             pbar.set_postfix(
                 {
                     "epoch": epoch + 1,
-                    "train_loss": f"{np.mean(training_losses):.4f}",
-                    "val_loss": f"{np.mean(validation_losses):.4f}",
+                    "train_loss": f"{train_loss:.4f}",
+                    "validation_loss": f"{val_loss:.4f}"
                 }
             )
 
-    if np.mean(validation_losses) < best_loss:
-        print(
-            f"Epoch {epoch}: Best loss improved {best_loss} -> {np.mean(validation_losses)}. Saving model."
-        )
-        torch.save(model.state_dict(), "outputs/diff_model_state_dict.pth")
+            if val_loss < best_loss:
+                print(
+                    f"Epoch {epoch}: Best loss improved {best_loss:.4f} -> {val_loss:.4f}. Saving model."
+                )
+                torch.save(model.state_dict(), "outputs/diff_model_state_dict.pth")
 
     return model
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def train_diffusion_model(cfg: DictConfig):
     model, noise_scheduler, optimizer = setup_training_artifacts(cfg)
     LOGGER.info(
@@ -250,8 +249,8 @@ def train_diffusion_model(cfg: DictConfig):
             data_path=val_data_path, cfg=cfg, shuffle=False
         )
 
-    mlflow.set_experiment(cfg.experiment_name)
-    with mlflow.start_run(run_name=cfg.run_name):
+    mlflow.set_experiment(cfg.mlflow.experiment_name)
+    with mlflow.start_run(run_name=cfg.mlflow.run_name):
         mlflow.log_params(cfg)
         model = train(
             cfg,

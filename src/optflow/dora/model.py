@@ -111,7 +111,7 @@ class DoraVAE(nn.Module):
             point_feature_channels=3,
             latent_sequence_length=2048,
             embed_dim=64,
-            out_dim=1,
+            out_dims=1,
             width=768,
             num_heads=12,
             num_freqs=8,

@@ -7,7 +7,7 @@ from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora import DoraVAE
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def test_diffusion(cfg: DictConfig) -> None:
     model = LatentTransformer(
         in_channels=cfg.diffusion.model.in_channels,
@@ -46,7 +46,7 @@ def test_diffusion(cfg: DictConfig) -> None:
     ), "Output shape mismatch"
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def test_dora_pretrained_encoder(cfg: DictConfig) -> None:
     model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
     model.to(cfg.device)
@@ -73,7 +73,7 @@ def test_dora_pretrained_encoder(cfg: DictConfig) -> None:
     ), "Moments shape mismatch"
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def test_dora_pretrained_decoder(cfg: DictConfig) -> None:
     model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
     model.to(cfg.device)
@@ -102,7 +102,7 @@ def test_dora_pretrained_decoder(cfg: DictConfig) -> None:
     ), "Signed distance shape mismatch"
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def test_dora_pretrained_default(cfg: DictConfig) -> None:
     model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.vae.checkpoint_path)
     model.to(cfg.device)

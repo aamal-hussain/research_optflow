@@ -151,7 +151,7 @@ def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
     return model
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
 def train_dora_model(cfg: DictConfig):
     model = DoraVAE(**{k: v for k, v in cfg.vae.items() if k != "checkpoint_path"}).to(
         cfg.device
@@ -180,8 +180,8 @@ def train_dora_model(cfg: DictConfig):
         data_path=val_data_path, mode=model.mode, cfg=cfg, shuffle=False
     )
 
-    mlflow.set_experiment(cfg.experiment_name)
-    with mlflow.start_run(run_name=cfg.run_name):
+    mlflow.set_experiment(cfg.mlflow.experiment_name)
+    with mlflow.start_run(run_name=cfg.mlflow.run_name):
         mlflow.log_params(cfg)
         model = train(
             cfg,

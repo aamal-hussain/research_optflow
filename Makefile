@@ -31,6 +31,7 @@ clean:
 	@rm -rf .cache
 	@rm -rf .pytest_cache
 	@rm -rf .mypy_cache
+	@rm -rf **/.ruff_cache
 	@rm -rf build
 	@rm -rf dist
 	@rm -rf *.egg-info
