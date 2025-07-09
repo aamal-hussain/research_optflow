@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import h5py
 import numpy as np
@@ -12,6 +13,7 @@ from optflow.dora.dataset.dataset import DoraDataset
 from optflow.dora.model import DoraVAE
 from skimage.measure import marching_cubes
 
+LOGGER = logging.getLogger(__name__)
 
 
 def reconstruct_mesh(sample, model, cfg, name):
@@ -33,16 +35,19 @@ def reconstruct_mesh(sample, model, cfg, name):
     sharp_pc = model_input["sharp_pc"].to(cfg.device).unsqueeze(0)
     sharp_feats = model_input["sharp_feats"].to(cfg.device).unsqueeze(0)
 
-    query_points = torch.from_numpy(query_points).to(device=cfg.device, dtype=torch.float32).unsqueeze(0)
-    sdf = model(
+    query_points = (
+        torch.from_numpy(query_points)
+        .to(device=cfg.device, dtype=torch.float32)
+        .unsqueeze(0)
+    )
+    sdf, _ = model(
         coarse_pc=coarse_pc,
         coarse_feats=coarse_feats,
         sharp_pc=sharp_pc,
         sharp_feats=sharp_feats,
         query_points=query_points,
         sample_posterior=cfg.sample_posterior,
-    ).squeeze(-1)
-
+    )
 
     sdf = sdf.detach().cpu().numpy().squeeze()
     sdf = sdf.reshape((cfg.grid_size, cfg.grid_size, cfg.grid_size))
@@ -54,9 +59,13 @@ def reconstruct_mesh(sample, model, cfg, name):
     plotter = pv.Plotter(off_screen=True)
     plotter.add_mesh(mesh, color="white")
     plotter.export_html(f"outputs/{name}.html")
+    LOGGER.info(f"Saved reconstruction to outputs/{name}.html")
     plotter.close()
 
-@hydra.main(version_base=None, config_path="../conf", config_name="reconstruction_config")
+
+@hydra.main(
+    version_base=None, config_path="../conf", config_name="reconstruction_config"
+)
 def reconstruct_data_sample(cfg: DictConfig):
     model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.checkpoint_path)
     model.to(cfg.device)
@@ -64,24 +73,46 @@ def reconstruct_data_sample(cfg: DictConfig):
 
     dataset_path = Path(f"data/{cfg.dataset_name}")
     data_sample = list(dataset_path.rglob(f"{cfg.sample_name}.h5"))
-    assert len(data_sample) > 0, f"Sample {cfg.sample_name} not found in {cfg.dataset_name}"
+    assert len(data_sample) > 0, (
+        f"Sample {cfg.sample_name} not found in {cfg.dataset_name}"
+    )
     data_sample = data_sample[0]
 
     sample = {}
-    with h5py.File(data_sample, 'r') as f:
+    with h5py.File(data_sample, "r") as f:
         for key in f.keys():
             sample[key] = f[key][()]
         f.close()
 
+    assert {
+        cfg.dataset_params.verts_key,
+        cfg.dataset_params.faces_key,
+        cfg.dataset_params.areas_key,
+        cfg.dataset_params.faces_normals_key,
+    }.issubset(sample), (
+        f"sample does not contain the required keys: \n {cfg.dataset_params.verts_key} \n"
+        f" {cfg.dataset_params.faces_key} \n {cfg.dataset_params.areas_key} \n {cfg.dataset_params.faces_normals_key} \n"
+        "Check the sample or the dataset parameters."
+    )
+
+    center, scale = calculate_center_and_scale_of_mesh(
+        sample[cfg.dataset_params.verts_key]
+    )
+    sample[cfg.dataset_params.verts_key] = (
+        sample[cfg.dataset_params.verts_key] - center
+    ) / scale
+    sample[cfg.dataset_params.areas_key] /= scale * scale
+
     reconstruct_mesh(sample, model, cfg, cfg.sample_name)
 
 
-@hydra.main(version_base=None, config_path="../conf", config_name="reconstruction_config")
+@hydra.main(
+    version_base=None, config_path="../conf", config_name="reconstruction_config"
+)
 def reconstruct_pyvista_primitive(cfg: DictConfig):
     model = DoraVAE.from_pretrained_checkpoint(checkpoint_path=cfg.checkpoint_path)
     model.eval()
     model.to(cfg.device)
-
 
     match cfg.pyvista_primitive:
         case "bunny":
@@ -94,18 +125,18 @@ def reconstruct_pyvista_primitive(cfg: DictConfig):
             raise ValueError(f"{cfg.pyvista_primitive} is not available.")
 
     mesh = mesh.clean(absolute=False, tolerance=1e-8)
-    mesh = mesh.compute_cell_sizes(length=False, area=True, volume=False)
     mesh = mesh.compute_normals(cell_normals=True, point_normals=False)
     mesh = center_and_scale_mesh(mesh)
 
     sample = {
-            cfg.dataset_params.verts_key: mesh.points,
-            cfg.dataset_params.faces_key: mesh.regular_faces,
-            cfg.dataset_params.areas_key: mesh.cell_data["Area"],
-            cfg.dataset_params.faces_normals_key: mesh.cell_normals,
+        cfg.dataset_params.verts_key: mesh.points,
+        cfg.dataset_params.faces_key: mesh.regular_faces,
+        cfg.dataset_params.areas_key: mesh.cell_data["Area"],
+        cfg.dataset_params.faces_normals_key: mesh.cell_normals,
     }
 
     reconstruct_mesh(sample, model, cfg, cfg.pyvista_primitive)
+
 
 def center_and_scale_mesh(mesh: pv.PolyData):
     mesh = mesh.compute_cell_sizes(length=False, area=True, volume=False)
@@ -117,6 +148,7 @@ def center_and_scale_mesh(mesh: pv.PolyData):
     mesh.cell_data["Area"] /= scale * scale
     return mesh
 
+
 def calculate_center_and_scale_of_mesh(
     verts: np.ndarray,
 ) -> tuple[np.ndarray, float]:
@@ -127,5 +159,6 @@ def calculate_center_and_scale_of_mesh(
     scale = (bounding_box_max - bounding_box_min).max() / 2.0
     return center, scale
 
+
 if __name__ == "__main__":
-    reconstruct_pyvista_primitive()
+    reconstruct_data_sample()

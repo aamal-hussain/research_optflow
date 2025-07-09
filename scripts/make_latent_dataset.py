@@ -7,10 +7,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tqdm import tqdm
 
-_BASE_PATH = Path("/mnt/storage01/workspace/research/opora/experiments/luminary_300k_v5/02_processed_data")
+_BASE_PATH = Path(
+    "/mnt/storage01/workspace/research/opora/experiments/luminary_300k_v5/02_processed_data"
+)
 _LATENT_PATH = Path("data/luminary_latents")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def process_file(pth: Path):
     name = pth.stem
@@ -39,8 +44,8 @@ def process_file(pth: Path):
 
     return
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     os.makedirs(_LATENT_PATH, exist_ok=True)
     os.makedirs(_LATENT_PATH / "train", exist_ok=True)
     os.makedirs(_LATENT_PATH / "test", exist_ok=True)

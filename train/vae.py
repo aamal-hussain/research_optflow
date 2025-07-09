@@ -62,8 +62,16 @@ def get_sdf_and_entropy_from_batch(
 
 
 def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
-    training_losses = deque(maxlen=100)
-    validation_losses = deque(maxlen=100)
+    train_batch_losses = {
+        "loss": deque(maxlen=len(train_dataloader)),
+        "sdf_loss": deque(maxlen=len(train_dataloader)),
+        "entropy": deque(maxlen=len(train_dataloader)),
+    }
+    val_batch_losses = {
+        "loss": deque(maxlen=len(val_dataloader)),
+        "sdf_loss": deque(maxlen=len(val_dataloader)),
+        "entropy": deque(maxlen=len(val_dataloader)),
+    }
     best_loss = np.inf
     with trange(
         cfg.n_epochs, desc="Training", unit="epoch", dynamic_ncols=True
@@ -74,7 +82,6 @@ def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
-                batch_losses = deque(maxlen=100)
                 for batch in train_bar:
                     sdf, entropy = get_sdf_and_entropy_from_batch(
                         batch, model, cfg.device
@@ -85,8 +92,7 @@ def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
                         target=batch["sdf"].unsqueeze(-1).to(cfg.device),
                         var=model.var.exp().expand(*sdf.shape),
                     )
-                    entropy_loss = entropy
-                    loss = sdf_loss + entropy_loss
+                    loss = sdf_loss + entropy
                     if torch.any(loss.isnan()):
                         LOGGER.info("NaN encountered in loss, breaking.")
                         breakpoint()
@@ -95,22 +101,24 @@ def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     optimizer.step()
 
-                    training_losses.append(loss.item())
-                    batch_losses.append(loss.item())
+                    train_batch_losses["loss"].append(loss.item())
+                    train_batch_losses["sdf_loss"].append(sdf_loss.item())
+                    train_batch_losses["entropy"].append(entropy.item())
+
                     train_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
-            mlflow.log_metric("train_loss", loss.item())
-            mlflow.log_metric("train_sdf_nll", sdf_loss.item())
-            mlflow.log_metric("train_kl_div", entropy_loss.item())
+            mlflow.log_metric("train_loss", np.mean(train_batch_losses["loss"]))
+            mlflow.log_metric("train_sdf_nll", np.mean(train_batch_losses["sdf_loss"]))
+            mlflow.log_metric("train_kl_div", np.mean(train_batch_losses["entropy"]))
+
             model.eval()
             optimizer.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
-                batch_losses = deque(maxlen=100)
                 for batch in val_bar:
                     sdf, entropy = get_sdf_and_entropy_from_batch(
                         batch, model, cfg.device
@@ -123,30 +131,33 @@ def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
                     entropy_loss = entropy
                     loss = sdf_loss + entropy_loss
 
-                    batch_losses.append(loss.item())
-                    validation_losses.append(loss.item())
+                    val_batch_losses["loss"].append(loss.item())
+                    val_batch_losses["sdf_loss"].append(sdf_loss.item())
+                    val_batch_losses["entropy"].append(entropy.item())
                     val_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
 
-            mlflow.log_metric("val_loss", loss.item())
-            mlflow.log_metric("val_sdf_nll", sdf_loss.item())
-            mlflow.log_metric("val_kl_div", entropy_loss.item())
+            mlflow.log_metric("val_loss", np.mean(val_batch_losses["loss"]))
+            mlflow.log_metric("val_sdf_nll", np.mean(val_batch_losses["sdf_loss"]))
+            mlflow.log_metric("val_kl_div", np.mean(val_batch_losses["entropy"]))
             pbar.set_postfix(
                 {
                     "epoch": epoch + 1,
-                    "train_loss": f"{np.mean(training_losses):.4f}",
-                    "val_loss": f"{np.mean(validation_losses):.4f}",
+                    "train_loss": f"{np.mean(train_batch_losses['loss']):.4f}",
+                    "validation_loss": f"{np.mean(val_batch_losses['loss']):.4f}",
                 }
             )
 
-    if np.mean(validation_losses) < best_loss:
-        print(
-            f"Epoch {epoch}: Best loss improved {best_loss} -> {np.mean(validation_losses)}. Saving model."
-        )
-        torch.save(model.state_dict(), "outputs/diff_model_state_dict.pth")
+            c_val_loss = np.mean(val_batch_losses)
+            if c_val_loss < best_loss:
+                print(
+                    f"Epoch {epoch}: Best loss improved {best_loss:.4f} -> {c_val_loss:.4f}. Saving model."
+                )
+                best_loss = c_val_loss
+                torch.save(model.state_dict(), "outputs/dora_model_state_dict.pth")
 
     return model
 

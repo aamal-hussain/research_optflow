@@ -3,13 +3,13 @@ defaults:
   - dataset: dora
 
 mlflow:
-  experiment_name: "diffusion_training"
+  experiment_name: "cleaned_shapenet"
   run_name: "schedule_free_cleaned_shapenet"
 
-batch_size: 2
+batch_size: 8
 sequence_length: 2048
 n_epochs: 1000
-optimizer:
+optimizer: # Using AdamWScheduleFree
   lr: 1e-4
   weight_decay: 1e-4
 device: "cuda"

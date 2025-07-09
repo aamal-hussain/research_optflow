@@ -67,8 +67,8 @@ class NoiseScheduler:
         return s1 * x_t - s2 * noise
 
     def q_posterior(self, x_0, x_t, t):
-        s1 = self.posterior_mean_coef1[t][:, None, None]
-        s2 = self.posterior_mean_coef2[t][:, None, None]
+        s1 = self.posterior_mean_coef1[t].repeat(1, 1, 1)
+        s2 = self.posterior_mean_coef2[t].repeat(1, 1, 1)
         return s1 * x_0 + s2 * x_t
 
     def get_variance(self, t):

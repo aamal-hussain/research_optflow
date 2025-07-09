@@ -1,8 +1,8 @@
 dataset_name: "shapenet_car"
-sample_name: "1ad321f067ffbe7e51a95aaa6caba1d3"
+sample_name: "2a82a66ce6273dce601c8ebc794de3f4"
 checkpoint_path: "/mnt/storage01/workspace/research/lethe/pretrained_checkpoints/dora/original-dora-v1.1/state_dict.pth"
 device: "cuda:2"
-grid_size: 64
+grid_size: 72
 sample_posterior: true
 dataset_params:
   verts_key: "mesh.verts"

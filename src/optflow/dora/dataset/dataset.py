@@ -71,6 +71,23 @@ class DoraDataset(Dataset):
         return encoder_sample
 
     def _decoder_sample(self, sample: dict[str, np.ndarray]) -> dict[str, torch.Tensor]:
+        if self._mode == VAEMode.DECODER:
+            if {"latents", "query_points"}.issubset(sample.keys()):
+                raise ValueError(
+                    "In decoder mode, both the latents and query points must be passed"
+                )
+            elif not (
+                isinstance(sample["latents"], np.ndarray)
+                and isinstance(sample["query_points"], np.ndarray)
+            ):
+                raise TypeError(
+                    f"latents and query_points must be of type np.ndarray, got {type(sample['latents'])} and {type(sample['query_points'])}"
+                )
+            else:
+                return {
+                    "latents": np.asarray(sample["latents"], dtype=np.float32),
+                    "query_points": np.asarray(sample["query_points"], dtype=np.float32),
+                }
         coarse_xyz, coarse_sdf = sample_points_and_signed_distance(
             vertices=sample[self._verts_key],
             faces=sample[self._faces_key],

@@ -3,7 +3,6 @@ import os
 import h5py
 import numpy as np
 import pyvista as pv
-import pymeshfix as mf
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -12,7 +11,10 @@ from tqdm import tqdm
 _BASE_PATH = Path("/mnt/storage01/workspace/research/gen11/shapenet_13")
 _H5_Path = _BASE_PATH / "car_dataset"
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def process_file(pth: Path):
     name = pth.parent.stem
@@ -51,8 +53,8 @@ def process_file(pth: Path):
 
     return
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     os.makedirs(_H5_Path, exist_ok=True)
     os.makedirs(_H5_Path / "train", exist_ok=True)
     os.makedirs(_H5_Path / "test", exist_ok=True)

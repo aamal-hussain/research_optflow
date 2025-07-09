@@ -1,5 +1,8 @@
+from pathlib import Path
+
 import torch
 from torch import nn
+from tqdm import tqdm
 
 from optflow.common import MLP, PositionalEncoding, SelfAttention
 
@@ -48,12 +51,11 @@ class TransformerBlock(nn.Module):
         return x
 
 
-class LatentTransformer(nn.Module):
+class LatentDDPM(nn.Module):
     def __init__(
         self,
         in_channels,
         width,
-        out_channels,
         num_heads,
         depth=8,
         num_freqs=8,
@@ -61,7 +63,6 @@ class LatentTransformer(nn.Module):
     ):
         super().__init__()
         self.in_channels = in_channels
-        self.out_channels = out_channels
         self.num_heads = num_heads
 
         if not width % num_heads == 0:
@@ -72,7 +73,7 @@ class LatentTransformer(nn.Module):
             [TransformerBlock(width, num_heads, inner_product_channels) for _ in range(depth)]
         )
         self.norm = nn.LayerNorm(width)
-        self.projection = nn.Linear(width, out_channels, bias=False)
+        self.projection = nn.Linear(width, in_channels, bias=False) # As this is a DDPM, the out channels is the same as in_channels
 
         self.map_noise = PositionalEncoding(
             num_freqs=num_freqs, in_channels=1, include_pi=include_pi
@@ -84,6 +85,29 @@ class LatentTransformer(nn.Module):
             nn.SiLU(),
         )
 
+    @classmethod
+    def from_pretrained_checkpoint(
+        cls,
+        checkpoint_path: Path,
+        in_channels,
+        width,
+        num_heads,
+        depth=8,
+        num_freqs=8,
+        include_pi=True,
+    ):
+        state_dict = torch.load(checkpoint_path, map_location="cpu")
+        model = cls(
+            in_channels=in_channels,
+            width=width,
+            num_heads=num_heads,
+            depth=depth,
+            num_freqs=num_freqs,
+            include_pi=include_pi,
+        )
+        model.load_state_dict(state_dict)
+        return model
+
     def forward(self, x, t):
         t = self.map_noise(t)
         t = self.time_lifting(t).unsqueeze(1)  # Add sequence dimension
@@ -93,6 +117,30 @@ class LatentTransformer(nn.Module):
         x = self.norm(x)
         x = self.projection(x)
         return x
+
+    def generate(
+        self, num_samples, latent_shape, noise_scheduler, batch_size, device
+    ) -> torch.Tensor:
+        sample_dataloader = torch.utils.data.DataLoader(
+            dataset=range(num_samples),
+            batch_size=batch_size,
+            shuffle=False,
+        )
+        samples = torch.empty((num_samples, *latent_shape), dtype=torch.float32, device=device)
+        with torch.inference_mode():
+            timesteps = list(torch.arange(len(noise_scheduler), device=device, dtype=torch.int))[
+                ::-1
+            ]
+            for idx in sample_dataloader:
+                sample = torch.randn((len(idx), *latent_shape), device=device)
+                for t in tqdm(timesteps):
+                    t = t.repeat(sample.shape[0], 1)
+                    pred_noise = self(sample, t)
+                    sample = noise_scheduler.step(pred_noise, t[0].item(), sample)
+
+                samples[idx] = sample
+
+        return samples
 
 
 class Policy(nn.Module):

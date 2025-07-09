@@ -91,7 +91,9 @@ if __name__ == "__main__":
     verts = verts / 1.2 + 0.5
     normals = np.array(mesh.point_normals)
 
-    vals = model(torch.from_numpy(verts.astype(np.float32))[None].to(device='cuda'), 
-        torch.from_numpy(normals.astype(np.float32))[None].to(device='cuda'))
-    
+    vals = model(
+        torch.from_numpy(verts.astype(np.float32))[None].to(device="cuda"),
+        torch.from_numpy(normals.astype(np.float32))[None].to(device="cuda"),
+    )
+
     print(vals.shape)

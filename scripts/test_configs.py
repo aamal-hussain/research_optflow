@@ -2,17 +2,16 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
-from optflow.diffusion.model import LatentTransformer
+from optflow.diffusion.model import LatentDDPM
 from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora import DoraVAE
 
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def test_diffusion(cfg: DictConfig) -> None:
-    model = LatentTransformer(
+    model = LatentDDPM(
         in_channels=cfg.diffusion.model.in_channels,
         width=cfg.diffusion.model.width,
-        out_channels=cfg.diffusion.model.in_channels,  # out_channels should match in_channels
         num_heads=cfg.diffusion.model.num_heads,
         depth=cfg.diffusion.model.depth,
         num_freqs=cfg.diffusion.model.num_freqs,

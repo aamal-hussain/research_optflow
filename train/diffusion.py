@@ -12,7 +12,7 @@ from omegaconf import DictConfig
 import mlflow
 
 from optflow.diffusion.latent_dataset import LatentDataset
-from optflow.diffusion.model import LatentTransformer
+from optflow.diffusion.model import LatentDDPM
 from optflow.diffusion.noise_scheduler import NoiseScheduler, ScheduleType
 from optflow.dora.dataset.dataset import DoraDataset
 from optflow.dora.model import DoraVAE, VAEMode
@@ -86,11 +86,10 @@ def get_latent_from_batch(
     return latents
 
 
-def setup_training_artifacts(cfg: DictConfig) -> LatentTransformer:
-    model = LatentTransformer(
+def setup_training_artifacts(cfg: DictConfig) -> LatentDDPM:
+    model = LatentDDPM(
         in_channels=cfg.diffusion.model.in_channels,
         width=cfg.diffusion.model.width,
-        out_channels=cfg.diffusion.model.in_channels,  # out_channels should match in_channels
         num_heads=cfg.diffusion.model.num_heads,
         depth=cfg.diffusion.model.depth,
         num_freqs=cfg.diffusion.model.num_freqs,
@@ -106,7 +105,7 @@ def setup_training_artifacts(cfg: DictConfig) -> LatentTransformer:
     )
 
     optimizer = AdamWScheduleFree(
-        model.parameters(), cfg.optimizer.lr, weight_decay=cfg.optimizer.weight_decay
+        model.parameters(), cfg.optimizer.lr, weight_decay=cfg.optimizer.weight_decay, warmup_steps=50
     )
 
     return model, scheduler, optimizer
@@ -116,6 +115,8 @@ def train(
     cfg, train_dataloader, val_dataloader, vae, model, noise_scheduler, optimizer
 ):
     best_loss = np.inf
+    train_batch_losses = deque(maxlen=len(train_dataloader))
+    val_batch_losses = deque(maxlen=len(val_dataloader))
     with trange(
         cfg.n_epochs, desc="Training", unit="epoch", dynamic_ncols=True
     ) as pbar:
@@ -125,7 +126,6 @@ def train(
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
-                batch_losses = deque(maxlen=100)
                 for batch in train_bar:
                     latents = (
                         get_latent_from_batch(batch, vae, cfg.device)
@@ -150,21 +150,19 @@ def train(
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     optimizer.step()
 
-                    batch_losses.append(loss.item())
+                    train_batch_losses.append(loss.item())
                     train_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
-            train_loss = loss.item()
-            mlflow.log_metric("train_loss", train_loss)
+            mlflow.log_metric("train_loss", np.mean(train_batch_losses), step=epoch)
 
             model.eval()
             optimizer.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
-                batch_losses = deque(maxlen=100)
                 for batch in val_bar:
                     latents = (
                         get_latent_from_batch(batch, vae, cfg.device)
@@ -182,27 +180,28 @@ def train(
                     pred_noise = model(latents_corrupted, t.unsqueeze(-1))
                     loss = torch.nn.functional.mse_loss(pred_noise, noise)
 
-                    batch_losses.append(loss.item())
+                    val_batch_losses.append(loss.item())
                     val_bar.set_postfix(
                         {
                             "batch_loss": f"{loss.item():.4f}",
                         }
                     )
 
-            val_loss = loss.item()
-            mlflow.log_metric("val_loss", val_loss)
+            mlflow.log_metric("val_loss", np.mean(val_batch_losses), step=epoch)
             pbar.set_postfix(
                 {
                     "epoch": epoch + 1,
-                    "train_loss": f"{train_loss:.4f}",
-                    "validation_loss": f"{val_loss:.4f}"
+                    "train_loss": f"{np.mean(train_batch_losses):.4f}",
+                    "validation_loss": f"{np.mean(val_batch_losses):.4f}",
                 }
             )
 
-            if val_loss < best_loss:
+            c_val_loss = np.mean(val_batch_losses)
+            if c_val_loss < best_loss:
                 print(
-                    f"Epoch {epoch}: Best loss improved {best_loss:.4f} -> {val_loss:.4f}. Saving model."
+                    f"Epoch {epoch}: Best loss improved {best_loss:.4f} -> {c_val_loss:.4f}. Saving model."
                 )
+                best_loss = c_val_loss
                 torch.save(model.state_dict(), "outputs/diff_model_state_dict.pth")
 
     return model
