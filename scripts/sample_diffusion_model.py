@@ -13,6 +13,7 @@ from skimage.measure import marching_cubes
 
 LOGGER = logging.getLogger(__name__)
 
+
 @hydra.main(
     version_base=None, config_path="../conf", config_name="diffusion_sampling_config"
 )
@@ -24,7 +25,7 @@ def sample_from_pretrained_diffusion_model(cfg: DictConfig) -> None:
         num_timesteps=cfg.diffusion.noise_scheduler.num_timesteps,
         beta_start=cfg.diffusion.noise_scheduler.beta_start,
         beta_end=cfg.diffusion.noise_scheduler.beta_end,
-        beta_schedule=ScheduleType(cfg.diffusion.noise_scheduler.schedule_type),
+        schedule_type=ScheduleType(cfg.diffusion.noise_scheduler.schedule_type),
         device=cfg.device,
     )
 
@@ -37,9 +38,9 @@ def sample_from_pretrained_diffusion_model(cfg: DictConfig) -> None:
     )
 
     if cfg.mesh_reconstruction.reconstruct_mesh:
-        assert cfg.num_samples % 4 == 0, (
-            "I am enforcing that each row of the plot has four meshes, so ensure that num_samples is a multiple of four."
-        )
+        assert (
+            cfg.num_samples % 4 == 0
+        ), "I am enforcing that each row of the plot has four meshes, so ensure that num_samples is a multiple of four."
         pv.start_xvfb()
         plotter = pv.Plotter(
             shape=(cfg.num_samples // 4, 4), notebook=False, off_screen=True
@@ -74,7 +75,13 @@ def sample_from_pretrained_diffusion_model(cfg: DictConfig) -> None:
                     query_points=query_points.unsqueeze(0), latents=latent.unsqueeze(0)
                 )
                 sdf = sdf.detach().cpu().numpy().squeeze()
-                sdf = sdf.reshape((cfg.mesh_reconstruction.grid_size, cfg.mesh_reconstruction.grid_size, cfg.mesh_reconstruction.grid_size))
+                sdf = sdf.reshape(
+                    (
+                        cfg.mesh_reconstruction.grid_size,
+                        cfg.mesh_reconstruction.grid_size,
+                        cfg.mesh_reconstruction.grid_size,
+                    )
+                )
 
             verts, faces, _, _ = marching_cubes(sdf, level=0.0)
             mesh = pv.PolyData.from_regular_faces(verts, faces)
@@ -86,7 +93,9 @@ def sample_from_pretrained_diffusion_model(cfg: DictConfig) -> None:
         plotter.link_views()
         plotter.export_html("outputs/latent_sample_reconstructions.html")
 
-        LOGGER.info(f"Saved reconstruction to outputs/latent_sample_reconstructions.html")
+        LOGGER.info(
+            "Saved reconstruction to outputs/latent_sample_reconstructions.html"
+        )
         plotter.close()
 
 

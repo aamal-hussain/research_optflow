@@ -88,29 +88,14 @@ def get_latent_from_batch(
 
 
 def setup_training_artifacts(cfg: DictConfig) -> LatentDDPM:
-    model = LatentDDPM(
-        in_channels=cfg.diffusion.model.in_channels,
-        width=cfg.diffusion.model.width,
-        num_heads=cfg.diffusion.model.num_heads,
-        depth=cfg.diffusion.model.depth,
-        num_freqs=cfg.diffusion.model.num_freqs,
-        include_pi=cfg.diffusion.model.include_pi,
-    ).to(cfg.device)
+    model = LatentDDPM(**cfg.diffusion.model).to(cfg.device)
 
-    scheduler = NoiseScheduler(
-        num_timesteps=cfg.diffusion.noise_scheduler.num_timesteps,
-        beta_start=cfg.diffusion.noise_scheduler.beta_start,
-        beta_end=cfg.diffusion.noise_scheduler.beta_end,
-        beta_schedule=ScheduleType(cfg.diffusion.noise_scheduler.schedule_type),
-        device=cfg.device,
+    cfg.diffusion.noise_scheduler.schedule_type = ScheduleType(
+        cfg.diffusion.noise_scheduler.schedule_type
     )
+    scheduler = NoiseScheduler(device=cfg.device, **cfg.diffusion.noise_scheduler)
 
-    optimizer = AdamWScheduleFree(
-        model.parameters(),
-        cfg.optimizer.lr,
-        weight_decay=cfg.optimizer.weight_decay,
-        warmup_steps=100,
-    )
+    optimizer = AdamWScheduleFree(model.parameters(), **cfg.optimizer)
 
     return model, scheduler, optimizer
 

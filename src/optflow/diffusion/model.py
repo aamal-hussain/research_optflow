@@ -23,7 +23,7 @@ class AdaptiveLayerNorm(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, in_channels, num_heads, inner_product_channels):
+    def __init__(self, in_channels, num_heads, inner_product_channels, use_checkpoint):
         super().__init__()
         self.in_channels = in_channels
         self.num_heads = num_heads
@@ -33,11 +33,13 @@ class TransformerBlock(nn.Module):
             in_channels=in_channels,
             num_heads=num_heads,
             inner_product_channels=inner_product_channels,
+            use_checkpoint=use_checkpoint,
         )
         self.attn2 = SelfAttention(
             in_channels=in_channels,
             num_heads=num_heads,
             inner_product_channels=inner_product_channels,
+            use_checkpoint=use_checkpoint,
         )
         self.norm1 = AdaptiveLayerNorm(in_channels)
         self.norm2 = AdaptiveLayerNorm(in_channels)
@@ -57,9 +59,10 @@ class LatentDDPM(nn.Module):
         in_channels,
         width,
         num_heads,
-        depth=8,
-        num_freqs=8,
-        include_pi=True,
+        depth,
+        num_freqs,
+        include_pi,
+        use_checkpoint,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -70,10 +73,20 @@ class LatentDDPM(nn.Module):
         inner_product_channels = width // num_heads
         self.lifting = nn.Linear(in_channels, width, bias=False)
         self.transformer_blocks = nn.ModuleList(
-            [TransformerBlock(width, num_heads, inner_product_channels) for _ in range(depth)]
+            [
+                TransformerBlock(
+                    in_channels=width,
+                    num_heads=num_heads,
+                    inner_product_channels=inner_product_channels,
+                    use_checkpoint=use_checkpoint,
+                )
+                for _ in range(depth)
+            ]
         )
         self.norm = nn.LayerNorm(width)
-        self.projection = nn.Linear(width, in_channels, bias=False) # As this is a DDPM, the out channels is the same as in_channels
+        self.projection = nn.Linear(
+            width, in_channels, bias=False
+        )  # As this is a DDPM, the out channels is the same as in_channels
 
         self.map_noise = PositionalEncoding(
             num_freqs=num_freqs, in_channels=1, include_pi=include_pi
@@ -92,9 +105,10 @@ class LatentDDPM(nn.Module):
         in_channels,
         width,
         num_heads,
-        depth=8,
-        num_freqs=8,
-        include_pi=True,
+        depth,
+        num_freqs,
+        include_pi,
+        use_checkpoint,
     ):
         state_dict = torch.load(checkpoint_path, map_location="cpu")
         model = cls(
@@ -104,6 +118,7 @@ class LatentDDPM(nn.Module):
             depth=depth,
             num_freqs=num_freqs,
             include_pi=include_pi,
+            use_checkpoint=use_checkpoint,
         )
         model.load_state_dict(state_dict)
         return model

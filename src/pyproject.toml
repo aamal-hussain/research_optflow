@@ -38,7 +38,7 @@ exclude = ["docs/", "tests/"]
 
 [tool.ruff.lint]
 select = ["D", "E", "F", "I", "ARG"]
-ignore = ["D205"]
+ignore = ["D205", "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
 
 [tool.ruff.lint.flake8-unused-arguments]
 ignore-variadic-names = true

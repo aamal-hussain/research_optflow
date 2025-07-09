@@ -17,18 +17,18 @@ class NoiseScheduler:
         num_timesteps: int,
         beta_start: float,
         beta_end: float,
-        beta_schedule: ScheduleType,
+        schedule_type: ScheduleType,
         device: str,
     ):
         self.num_timesteps = num_timesteps
-        match beta_schedule:
+        match schedule_type:
             case ScheduleType.LINEAR:
                 self.betas = torch.linspace(
                     beta_start, beta_end, num_timesteps, dtype=torch.float32, device=device
                 )
             # TODO: Quadratic schedule is not implemented yet.
             case _:
-                raise ValueError(f"Unknown beta schedule: {beta_schedule}")
+                raise ValueError(f"Unknown beta schedule: {schedule_type}")
 
         self.alphas = 1.0 - self.betas
         self.alphas_cumulative = torch.cumprod(self.alphas, dim=0)

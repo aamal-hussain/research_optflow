@@ -131,7 +131,7 @@ def point_rasterize(pts, vals, size):
     dim_ = torch.arange(dim).repeat(com_.shape[0], 1)  # (2**dim, dim)
     ind_ = ind01[com_, ..., dim_]  # (2**dim, dim, batch, num_points)
     ind_n = ind_.permute(2, 3, 0, 1)  # (batch, num_points, 2**dim, dim)
-    # ind_b = torch.arange(bs).expand(ind_n.shape[1], ind_n.shape[2], bs).permute(2, 0, 1) # (batch, num_points, 2**dim)
+    # ind_b = torch.arange(bs).expand(ind_n.shape[1], ind_n.shape[2], bs).permute(2, 0, 1)
     ind_b = (
         torch.arange(bs, device=dev).expand(ind_n.shape[1], ind_n.shape[2], bs).permute(2, 0, 1)
     )  # (batch, num_points, 2**dim)

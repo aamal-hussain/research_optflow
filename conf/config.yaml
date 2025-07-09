@@ -12,6 +12,7 @@ n_epochs: 1000
 optimizer: # Using AdamWScheduleFree
   lr: 1e-4
   weight_decay: 1e-4
+  warmup_steps: 100
 device: "cuda"
 diffusion:
   model:
@@ -21,6 +22,7 @@ diffusion:
     depth: 4
     num_freqs: 8
     include_pi: false
+    use_checkpoint: false
   noise_scheduler:
     beta_start: 0.0001
     beta_end: 0.02

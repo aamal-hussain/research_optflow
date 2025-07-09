@@ -11,16 +11,20 @@ class SelfAttention(nn.Module):
         inner_product_channels: int,
         num_heads: int,
         qkv_bias: bool = False,
+        use_checkpoint: bool = True,
     ):
         super().__init__()
-        self.inner_product_channels = inner_product_channels
+        self.use_checkpoint = use_checkpoint
         self.c_qkv = nn.Linear(in_channels, num_heads * inner_product_channels * 3, bias=qkv_bias)
         self.c_proj = nn.Linear(num_heads * inner_product_channels, in_channels)
         self.attention = QKVMultiheadAttention(num_heads=num_heads)
 
     def forward(self, x):
         qkv = self.c_qkv(x)
-        x = checkpoint(self.attention, qkv, use_reentrant=False)
+        if self.use_checkpoint:
+            x = checkpoint(self.attention, qkv, use_reentrant=False)
+        else:
+            x = self.attention(qkv)
         x = self.c_proj(x)
         return x
 

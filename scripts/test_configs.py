@@ -22,7 +22,7 @@ def test_diffusion(cfg: DictConfig) -> None:
         num_timesteps=cfg.diffusion.noise_scheduler.num_timesteps,
         beta_start=cfg.diffusion.noise_scheduler.beta_start,
         beta_end=cfg.diffusion.noise_scheduler.beta_end,
-        beta_schedule=ScheduleType(cfg.diffusion.noise_scheduler.schedule_type),
+        schedule_type=ScheduleType(cfg.diffusion.noise_scheduler.schedule_type),
         device=cfg.device,
     )
 

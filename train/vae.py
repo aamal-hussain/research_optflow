@@ -170,9 +170,7 @@ def train_dora_model(cfg: DictConfig):
         cfg.device
     )
 
-    optimizer = AdamWScheduleFree(
-        model.parameters(), cfg.optimizer.lr, weight_decay=cfg.optimizer.weight_decay
-    )
+    optimizer = AdamWScheduleFree(model.parameters(), **cfg.optimizer)
 
     LOGGER.info(
         f"VAE model has {sum(p.numel() for p in model.parameters())} parameters."

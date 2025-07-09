@@ -31,6 +31,7 @@ class ResidualSelfAttentionBlock(nn.Module):
             inner_product_channels=inner_product_channels,
             num_heads=num_heads,
             qkv_bias=qkv_bias,
+            use_checkpoint=use_checkpoint,
         )
         self.ln_1 = nn.LayerNorm(width)
         self.mlp = MLP(in_channels=width, out_channels=width)
@@ -69,6 +70,7 @@ class ResidualCrossAttentionBlock(nn.Module):
             inner_product_channels=inner_product_channels,
             num_heads=num_heads,
             qkv_bias=qkv_bias,
+            use_checkpoint=use_checkpoint,
         )
         self.ln_1 = nn.LayerNorm(width)
         self.ln_2 = nn.LayerNorm(width)

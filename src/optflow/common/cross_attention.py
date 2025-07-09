@@ -12,8 +12,10 @@ class CrossAttention(nn.Module):
         inner_product_channels: int,
         num_heads: int,
         qkv_bias: bool = False,
+        use_checkpoint: bool = True,
     ):
         super().__init__()
+        self.use_checkpoint = use_checkpoint
         self.c_q = nn.Linear(query_channels, num_heads * inner_product_channels, bias=qkv_bias)
         self.c_kv = nn.Linear(in_channels, num_heads * inner_product_channels * 2, bias=qkv_bias)
         # Output projection yields query_channels so that the residual connection works.
@@ -23,7 +25,10 @@ class CrossAttention(nn.Module):
     def forward(self, queries, x):
         q = self.c_q(queries)
         kv = self.c_kv(x)
-        x = checkpoint(self.attention, q, kv, use_reentrant=False)
+        if self.use_checkpoint:
+            x = checkpoint(self.attention, q, kv, use_reentrant=False)
+        else:
+            x = self.attention(q, kv)
         x = self.c_proj(x)
         return x
 
