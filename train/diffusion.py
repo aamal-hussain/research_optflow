@@ -1,5 +1,6 @@
 import logging
 from collections import deque
+import os
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm, trange
@@ -105,14 +106,24 @@ def setup_training_artifacts(cfg: DictConfig) -> LatentDDPM:
     )
 
     optimizer = AdamWScheduleFree(
-        model.parameters(), cfg.optimizer.lr, weight_decay=cfg.optimizer.weight_decay, warmup_steps=50
+        model.parameters(),
+        cfg.optimizer.lr,
+        weight_decay=cfg.optimizer.weight_decay,
+        warmup_steps=100,
     )
 
     return model, scheduler, optimizer
 
 
 def train(
-    cfg, train_dataloader, val_dataloader, vae, model, noise_scheduler, optimizer
+    cfg,
+    train_dataloader,
+    val_dataloader,
+    vae,
+    model,
+    noise_scheduler,
+    optimizer,
+    run_id,
 ):
     best_loss = np.inf
     train_batch_losses = deque(maxlen=len(train_dataloader))
@@ -202,9 +213,10 @@ def train(
                     f"Epoch {epoch}: Best loss improved {best_loss:.4f} -> {c_val_loss:.4f}. Saving model."
                 )
                 best_loss = c_val_loss
-                torch.save(model.state_dict(), "outputs/diff_model_state_dict.pth")
+                torch.save(model.state_dict(), f"outputs/{run_id}/model_state_dict.pth")
 
-    return model
+    print("Finished training. Saving final model")
+    torch.save(model.state_dict(), f"outputs/{run_id}/final_model_state_dict.pth")
 
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
@@ -250,8 +262,10 @@ def train_diffusion_model(cfg: DictConfig):
 
     mlflow.set_experiment(cfg.mlflow.experiment_name)
     with mlflow.start_run(run_name=cfg.mlflow.run_name):
+        run_id = mlflow.active_run().info.run_id
+        os.makedirs(f"outputs/{run_id}")
         mlflow.log_params(cfg)
-        model = train(
+        train(
             cfg,
             train_dataloader,
             val_dataloader,
@@ -259,12 +273,9 @@ def train_diffusion_model(cfg: DictConfig):
             model,
             noise_scheduler,
             optimizer,
+            run_id,
         )
-
-    return model
 
 
 if __name__ == "__main__":
-    model = train_diffusion_model()
-    print("Finished training. Saving final model")
-    torch.save(model.state_dict(), "outputs/final_diff_model_state_dict.pth")
+    train_diffusion_model()

@@ -1,5 +1,6 @@
 import logging
 from collections import deque
+import os
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm, trange
@@ -61,7 +62,7 @@ def get_sdf_and_entropy_from_batch(
     )
 
 
-def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
+def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn, run_id):
     train_batch_losses = {
         "loss": deque(maxlen=len(train_dataloader)),
         "sdf_loss": deque(maxlen=len(train_dataloader)),
@@ -157,9 +158,10 @@ def train(cfg, train_dataloader, val_dataloader, model, optimizer, loss_fn):
                     f"Epoch {epoch}: Best loss improved {best_loss:.4f} -> {c_val_loss:.4f}. Saving model."
                 )
                 best_loss = c_val_loss
-                torch.save(model.state_dict(), "outputs/dora_model_state_dict.pth")
+                torch.save(model.state_dict(), f"outputs/{run_id}/model_state_dict.pth")
 
-    return model
+    print("Finished training. Saving final model")
+    torch.save(model.state_dict(), f"outputs/{run_id}/final_model_state_dict.pth")
 
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
@@ -193,20 +195,19 @@ def train_dora_model(cfg: DictConfig):
 
     mlflow.set_experiment(cfg.mlflow.experiment_name)
     with mlflow.start_run(run_name=cfg.mlflow.run_name):
+        run_id = mlflow.active_run().info.run_id
+        os.makedirs(f"outputs/{run_id}")
         mlflow.log_params(cfg)
-        model = train(
+        train(
             cfg,
             train_dataloader,
             val_dataloader,
             model,
             optimizer,
             loss_fn=torch.nn.GaussianNLLLoss(full=True, reduction="sum"),
+            run_id=run_id,
         )
-
-    return model
 
 
 if __name__ == "__main__":
-    model = train_dora_model()
-    print("Finished training. Saving final model")
-    torch.save(model.state_dict(), "outputs/final_dora_model_state_dict.pth")
+    train_dora_model()
