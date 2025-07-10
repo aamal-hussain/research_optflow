@@ -20,6 +20,7 @@ class ResidualSelfAttentionBlock(nn.Module):
         num_heads: int,
         qkv_bias: bool,
         use_checkpoint: bool,
+        use_sdpa: bool,
     ):
         super().__init__()
 
@@ -32,6 +33,7 @@ class ResidualSelfAttentionBlock(nn.Module):
             num_heads=num_heads,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
         self.ln_1 = nn.LayerNorm(width)
         self.mlp = MLP(in_channels=width, out_channels=width)
@@ -59,6 +61,7 @@ class ResidualCrossAttentionBlock(nn.Module):
         num_heads: int,
         qkv_bias: bool,
         use_checkpoint: bool,
+        use_sdpa: bool,
     ):
         super().__init__()
 
@@ -71,6 +74,7 @@ class ResidualCrossAttentionBlock(nn.Module):
             num_heads=num_heads,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
         self.ln_1 = nn.LayerNorm(width)
         self.ln_2 = nn.LayerNorm(width)
@@ -99,6 +103,7 @@ class Perceiver(nn.Module):
         depth: int = 12,
         qkv_bias: bool = True,
         use_checkpoint: bool = False,
+        use_sdpa: bool,
     ):
         super().__init__()
         self.resblocks = nn.ModuleList(
@@ -109,6 +114,7 @@ class Perceiver(nn.Module):
                     num_heads=num_heads,
                     qkv_bias=qkv_bias,
                     use_checkpoint=use_checkpoint,
+                    use_sdpa=use_sdpa,
                 )
                 for _ in range(depth)
             ]

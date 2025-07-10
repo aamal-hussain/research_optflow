@@ -6,14 +6,14 @@ mlflow:
   experiment_name: "cleaned_shapenet"
   run_name: "schedule_free_cleaned_shapenet"
 
-batch_size: 8
+batch_size: 1
 sequence_length: 2048
 n_epochs: 1000
 optimizer: # Using AdamWScheduleFree
   lr: 1e-4
   weight_decay: 1e-4
   warmup_steps: 100
-device: "cuda"
+device: "cuda:3"
 diffusion:
   model:
     in_channels: 64
@@ -23,6 +23,7 @@ diffusion:
     num_freqs: 8
     include_pi: false
     use_checkpoint: false
+    use_sdpa: true
   noise_scheduler:
     beta_start: 0.0001
     beta_end: 0.02
@@ -41,6 +42,7 @@ vae:
   decoder_depth: 16
   qkv_bias: false
   use_checkpoint: true
+  use_sdpa: true
   learn_var: true
 
   checkpoint_path: "/mnt/storage01/workspace/research/lethe/pretrained_checkpoints/dora/original-dora-v1.1/state_dict.pth"

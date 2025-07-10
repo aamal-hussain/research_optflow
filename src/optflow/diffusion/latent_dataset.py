@@ -10,11 +10,13 @@ class LatentDataset(Dataset):
         data: H5Dataset,
         mean_key: str = "latent.dora.2048.mean",
         logvar_key: str = "latent.dora.2048.log_variance",
+        sample_posterior: bool = True,
     ):
         super().__init__()
         self._data = data
         self._mean_key = mean_key
         self._logvar_key = logvar_key
+        self._sample_posterior = sample_posterior
 
     def __len__(self):
         return len(self._data)
@@ -29,7 +31,8 @@ class LatentDataset(Dataset):
             raise ValueError(f"Sample {name} does not have {self._mean_key} or {self._logvar_key}")
 
         mean = torch.from_numpy(mean).to(dtype=torch.float32)
+        if not self._sample_posterior:
+            return mean
         logvar = torch.from_numpy(logvar).to(dtype=torch.float32)
         latent = mean + torch.exp(0.5 * logvar) * torch.rand_like(mean)
-
         return latent

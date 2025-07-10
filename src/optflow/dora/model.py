@@ -46,6 +46,7 @@ class DoraVAE(nn.Module):
         qkv_bias: bool,
         use_checkpoint: bool,
         learn_var: bool,
+        use_sdpa: bool,
     ):
         super().__init__()
 
@@ -60,6 +61,7 @@ class DoraVAE(nn.Module):
             include_pi=include_pi,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
 
         self.pre_kl = nn.Linear(width, embed_dim * 2)
@@ -73,6 +75,7 @@ class DoraVAE(nn.Module):
             depth=decoder_depth,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
 
         self.decoder = DoraDecoder(
@@ -83,6 +86,7 @@ class DoraVAE(nn.Module):
             include_pi=include_pi,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
 
         if learn_var:
@@ -102,10 +106,7 @@ class DoraVAE(nn.Module):
         self.mode = VAEMode.DEFAULT
 
     @classmethod
-    def from_pretrained_checkpoint(
-        cls,
-        checkpoint_path: str,
-    ) -> "DoraVAE":
+    def from_pretrained_checkpoint(cls, checkpoint_path: str, use_sdpa: bool = True) -> "DoraVAE":
         state_dict = torch.load(checkpoint_path, map_location="cpu")
         model = cls(
             point_feature_channels=3,
@@ -121,6 +122,7 @@ class DoraVAE(nn.Module):
             qkv_bias=False,
             use_checkpoint=True,
             learn_var=False,
+            use_sdpa=use_sdpa,
         )
         model.load_state_dict(state_dict)
         return model
@@ -204,8 +206,8 @@ class DoraVAE(nn.Module):
                     or sharp_feats is not None
                 ):
                     LOGGER.warning(
-                        "coarse_pc, coarse_feats, sharp_pc, and sharp_feats are ignored in DECODER mode. "
-                        "Only latents and query_points are used."
+                        "coarse_pc, coarse_feats, sharp_pc, and sharp_feats are ignored in "
+                        "DECODER mode. Only latents and query_points are used."
                     )
                 x = self.post_kl(latents)
                 x = self.transformer(x)

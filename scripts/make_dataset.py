@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 _BASE_PATH = Path("/mnt/storage01/workspace/research/gen11/shapenet_13")
-_H5_Path = _BASE_PATH / "car_dataset"
+_H5_Path = _BASE_PATH / "chair_dataset"
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     os.makedirs(_H5_Path / "train", exist_ok=True)
     os.makedirs(_H5_Path / "test", exist_ok=True)
 
-    _CAR_PATH = _BASE_PATH / "02958343"
+    _CAR_PATH = _BASE_PATH / "03001627"
     files = list(_CAR_PATH.rglob("*.obj"))
     logging.info(f"Found {len(files)} .obj files to process.")
 

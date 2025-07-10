@@ -14,8 +14,9 @@ class DoraDecoder(nn.Module):
         num_heads: int,
         num_freqs: int,
         include_pi: bool,
-        qkv_bias: bool,
-        use_checkpoint: bool,
+        qkv_bias: bool = True,
+        use_checkpoint: bool = False,
+        use_sdpa: bool = True,
     ):
         super().__init__()
 
@@ -33,6 +34,7 @@ class DoraDecoder(nn.Module):
             num_heads=num_heads,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
 
         self.ln_post = nn.LayerNorm(width)

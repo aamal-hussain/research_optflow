@@ -23,7 +23,7 @@ class AdaptiveLayerNorm(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, in_channels, num_heads, inner_product_channels, use_checkpoint):
+    def __init__(self, in_channels, num_heads, inner_product_channels, use_checkpoint, use_sdpa):
         super().__init__()
         self.in_channels = in_channels
         self.num_heads = num_heads
@@ -34,12 +34,14 @@ class TransformerBlock(nn.Module):
             num_heads=num_heads,
             inner_product_channels=inner_product_channels,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
         self.attn2 = SelfAttention(
             in_channels=in_channels,
             num_heads=num_heads,
             inner_product_channels=inner_product_channels,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
         self.norm1 = AdaptiveLayerNorm(in_channels)
         self.norm2 = AdaptiveLayerNorm(in_channels)
@@ -63,6 +65,7 @@ class LatentDDPM(nn.Module):
         num_freqs,
         include_pi,
         use_checkpoint,
+        use_sdpa,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -79,6 +82,7 @@ class LatentDDPM(nn.Module):
                     num_heads=num_heads,
                     inner_product_channels=inner_product_channels,
                     use_checkpoint=use_checkpoint,
+                    use_sdpa=use_sdpa,
                 )
                 for _ in range(depth)
             ]
@@ -109,6 +113,7 @@ class LatentDDPM(nn.Module):
         num_freqs,
         include_pi,
         use_checkpoint,
+        use_sdpa,
     ):
         state_dict = torch.load(checkpoint_path, map_location="cpu")
         model = cls(
@@ -119,6 +124,7 @@ class LatentDDPM(nn.Module):
             num_freqs=num_freqs,
             include_pi=include_pi,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
         model.load_state_dict(state_dict)
         return model

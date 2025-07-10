@@ -20,6 +20,7 @@ class DoraEncoder(nn.Module):
         include_pi: bool,
         qkv_bias: bool = True,
         use_checkpoint: bool = False,
+        use_sdpa: bool = True,
     ):
         super().__init__()
 
@@ -39,6 +40,7 @@ class DoraEncoder(nn.Module):
             num_heads=num_heads,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
         self.cross_attn1 = ResidualCrossAttentionBlock(
             in_channels=width,
@@ -47,6 +49,7 @@ class DoraEncoder(nn.Module):
             num_heads=num_heads,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
 
         self.self_attn = Perceiver(
@@ -56,6 +59,7 @@ class DoraEncoder(nn.Module):
             depth=depth,
             qkv_bias=qkv_bias,
             use_checkpoint=use_checkpoint,
+            use_sdpa=use_sdpa,
         )
 
         self.ln_post = nn.LayerNorm(width)

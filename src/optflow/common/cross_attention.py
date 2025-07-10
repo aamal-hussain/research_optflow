@@ -1,3 +1,6 @@
+import math
+
+import torch
 from torch import nn
 from torch.nn.functional import scaled_dot_product_attention
 from torch.utils.checkpoint import checkpoint
@@ -13,6 +16,7 @@ class CrossAttention(nn.Module):
         num_heads: int,
         qkv_bias: bool = False,
         use_checkpoint: bool = True,
+        use_sdpa: bool = True,
     ):
         super().__init__()
         self.use_checkpoint = use_checkpoint
@@ -20,7 +24,7 @@ class CrossAttention(nn.Module):
         self.c_kv = nn.Linear(in_channels, num_heads * inner_product_channels * 2, bias=qkv_bias)
         # Output projection yields query_channels so that the residual connection works.
         self.c_proj = nn.Linear(num_heads * inner_product_channels, query_channels)
-        self.attention = QKVMultiheadCrossAttention(num_heads=num_heads)
+        self.attention = QKVMultiheadCrossAttention(num_heads=num_heads, use_sdpa=use_sdpa)
 
     def forward(self, queries, x):
         q = self.c_q(queries)
@@ -34,12 +38,13 @@ class CrossAttention(nn.Module):
 
 
 class QKVMultiheadCrossAttention(nn.Module):
-    def __init__(self, *, num_heads: int):
+    def __init__(self, *, num_heads: int, use_sdpa: bool):
         super().__init__()
         self.num_heads = num_heads
+        self.use_sdpa = use_sdpa
 
     def forward(self, q, kv):
-        _, m, _ = q.shape
+        _, m, width = q.shape
         bs, n, _ = kv.shape
         q = q.view(bs, m, self.num_heads, -1)
         kv = kv.view(bs, n, self.num_heads, -1)
@@ -48,6 +53,13 @@ class QKVMultiheadCrossAttention(nn.Module):
         q = q.permute(0, 2, 1, 3)
         k = k.permute(0, 2, 1, 3)
         v = v.permute(0, 2, 1, 3)
-        out = scaled_dot_product_attention(q, k, v).permute(0, 2, 1, 3).reshape(bs, m, -1)
+        if self.use_sdpa:
+            out = scaled_dot_product_attention(q, k, v).permute(0, 2, 1, 3).reshape(bs, m, -1)
+        else:
+            inner_product_channels = width // self.num_heads
+            scale = 1 / math.sqrt(inner_product_channels)
+            weight = torch.einsum("bhmc,bhnc->bhmn", q, k * scale)
+            weight = weight.softmax(dim=-1)
+            out = torch.einsum("bhmn,bhnc->bhmc", weight, v).permute(0, 2, 1, 3).reshape(bs, m, -1)
 
         return out

@@ -1,5 +1,6 @@
-name: "luminary_latents"
+name: "car_latents_dataset"
 num_workers: 16
 params:
-  mean_key: "latent.dora.2048.mean"
-  logvar_key: "latent.dora.2048.log_variance"
+  mean_key: "mean"
+  logvar_key: "logvar"
+  sample_posterior: false
