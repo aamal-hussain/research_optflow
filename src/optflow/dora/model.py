@@ -91,7 +91,7 @@ class DoraVAE(nn.Module):
 
         if learn_var:
             self.var = nn.Parameter(torch.empty(1))
-            nn.init.constant(self.var, -3.0)
+            nn.init.constant_(self.var, -3.0)
 
     def encoder_mode(self):
         """Set the model to encoder mode."""

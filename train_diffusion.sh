@@ -20,5 +20,6 @@ source /home/aamal.hussain/.bashrc
 conda activate $CONDA_ENV_NAME
 
 python -m train.diffusion \
-            dataset=dora  \
-            batch_size=4
+            dataset=latent  \
+            mlflow.run_name=dit_4M \
+            mlflow.experiment_name=car_latents \

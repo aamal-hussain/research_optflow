@@ -22,6 +22,17 @@ class AdaptiveLayerNorm(nn.Module):
         return x
 
 
+class AdaptiveLayerScale(nn.Module):
+    def __init__(self, in_channels: int, init_value: float = 1e-5):
+        super().__init__()
+
+        self.multiplier = nn.Parameter(torch.empty(in_channels))
+        nn.init.constant_(self.multiplier, init_value)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self.multiplier
+
+
 class TransformerBlock(nn.Module):
     def __init__(self, in_channels, num_heads, inner_product_channels, use_checkpoint, use_sdpa):
         super().__init__()
@@ -45,13 +56,16 @@ class TransformerBlock(nn.Module):
         )
         self.norm1 = AdaptiveLayerNorm(in_channels)
         self.norm2 = AdaptiveLayerNorm(in_channels)
-        self.norm3 = nn.LayerNorm(in_channels)
+        self.norm3 = AdaptiveLayerNorm(in_channels)
+        self.ls1 = AdaptiveLayerScale(in_channels)
+        self.ls2 = AdaptiveLayerScale(in_channels)
+        self.ls3 = AdaptiveLayerScale(in_channels)
         self.mlp = MLP(in_channels, in_channels)
 
     def forward(self, x, t):
-        x = self.attn1(self.norm1(x, t)) + x
-        x = self.attn2(self.norm2(x, t)) + x
-        x = self.mlp(self.norm3(x)) + x
+        x = self.ls1(self.attn1(self.norm1(x, t))) + x
+        x = self.ls2(self.attn2(self.norm2(x, t))) + x
+        x = self.ls3(self.mlp(self.norm3(x, t))) + x
         return x
 
 

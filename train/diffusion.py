@@ -7,7 +7,9 @@ from tqdm import tqdm, trange
 
 import hydra
 import torch
-from schedulefree.adamw_schedulefree import AdamWScheduleFree
+
+# from schedulefree.adamw_schedulefree import AdamWScheduleFree
+from torch.optim import Adam
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 import mlflow
@@ -74,7 +76,9 @@ def get_latent_from_batch(
     sharp_pc = batch["sharp_pc"].to(device)
     sharp_feats = batch["sharp_feats"].to(device)
 
-    with torch.inference_mode():
+    with torch.inference_mode(), torch.autocast(
+        device_type=device, dtype=torch.bfloat16
+    ):
         moments = vae(
             coarse_pc=coarse_pc,
             coarse_feats=coarse_feats,
@@ -95,7 +99,7 @@ def setup_training_artifacts(cfg: DictConfig) -> LatentDDPM:
     )
     scheduler = NoiseScheduler(device=cfg.device, **cfg.diffusion.noise_scheduler)
 
-    optimizer = AdamWScheduleFree(model.parameters(), **cfg.optimizer)
+    optimizer = Adam(model.parameters(), **cfg.optimizer)
 
     return model, scheduler, optimizer
 
@@ -113,12 +117,15 @@ def train(
     best_loss = np.inf
     train_batch_losses = deque(maxlen=len(train_dataloader))
     val_batch_losses = deque(maxlen=len(val_dataloader))
+
+    scaler = torch.amp.GradScaler(cfg.device)
+
     with trange(
         cfg.n_epochs, desc="Training", unit="epoch", dynamic_ncols=True
     ) as pbar:
         for epoch in pbar:
             model.train()
-            optimizer.train()
+            # optimizer.train()
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
@@ -136,15 +143,18 @@ def train(
                     )
                     noise = torch.randn_like(latents)
                     latents_corrupted = noise_scheduler.add_noise(latents, noise, t)
-                    pred_noise = model(latents_corrupted, t.unsqueeze(-1))
                     optimizer.zero_grad()
-                    loss = torch.nn.functional.mse_loss(pred_noise, noise)
+                    with torch.autocast(device_type=cfg.device, dtype=torch.bfloat16):
+                        pred_noise = model(latents_corrupted, t.unsqueeze(-1))
+                        loss = torch.nn.functional.mse_loss(pred_noise, noise)
                     if torch.any(loss.isnan()):
                         LOGGER.info("NaN encountered in loss, breaking.")
                         breakpoint()
-                    loss.backward()
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                    optimizer.step()
+                    scaler.step(optimizer)
+                    scaler.update()
 
                     train_batch_losses.append(loss.item())
                     train_bar.set_postfix(
@@ -155,7 +165,7 @@ def train(
             mlflow.log_metric("train_loss", np.mean(train_batch_losses), step=epoch)
 
             model.eval()
-            optimizer.eval()
+            # optimizer.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
@@ -173,8 +183,12 @@ def train(
                     )
                     noise = torch.randn_like(latents)
                     latents_corrupted = noise_scheduler.add_noise(latents, noise, t)
-                    pred_noise = model(latents_corrupted, t.unsqueeze(-1))
-                    loss = torch.nn.functional.mse_loss(pred_noise, noise)
+
+                    with torch.autocast(
+                        device_type=cfg.device, dtype=torch.bfloat16
+                    ), torch.no_grad():
+                        pred_noise = model(latents_corrupted, t.unsqueeze(-1))
+                        loss = torch.nn.functional.mse_loss(pred_noise, noise)
 
                     val_batch_losses.append(loss.item())
                     val_bar.set_postfix(
@@ -223,6 +237,7 @@ def train_diffusion_model(cfg: DictConfig):
         vae = DoraVAE.from_pretrained_checkpoint(
             checkpoint_path=cfg.vae.checkpoint_path
         ).to(cfg.device)
+        vae.encoder.latent_sequence_length = cfg.sequence_length
         vae.encoder_mode()
         vae.eval()
         LOGGER.info(

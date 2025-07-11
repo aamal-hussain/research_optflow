@@ -1,24 +1,24 @@
 defaults:
   - _self_
-  - dataset: dora
+  - dataset: latent
 
 mlflow:
   experiment_name: "cleaned_shapenet"
   run_name: "schedule_free_cleaned_shapenet"
 
-batch_size: 1
-sequence_length: 2048
-n_epochs: 1000
+batch_size: 128
+sequence_length: 512
+n_epochs: 1024
 optimizer: # Using AdamWScheduleFree
   lr: 1e-4
-  weight_decay: 1e-4
-  warmup_steps: 100
-device: "cuda:3"
+  # weight_decay: 1e-4
+  # warmup_steps: 100
+device: "cuda"
 diffusion:
   model:
     in_channels: 64
-    width: 128
-    num_heads: 2
+    width: 256
+    num_heads: 4
     depth: 4
     num_freqs: 8
     include_pi: false

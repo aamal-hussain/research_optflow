@@ -14,9 +14,7 @@ from skimage.measure import marching_cubes
 LOGGER = logging.getLogger(__name__)
 
 
-@hydra.main(
-    version_base=None, config_path="../conf", config_name="diffusion_sampling_config"
-)
+@hydra.main(version_base=None, config_path="../conf", config_name="sampling_config")
 def sample_from_pretrained_diffusion_model(cfg: DictConfig) -> None:
     model = LatentDDPM.from_pretrained_checkpoint(
         checkpoint_path=cfg.diffusion.checkpoint_path, **cfg.diffusion.model
@@ -83,12 +81,16 @@ def sample_from_pretrained_diffusion_model(cfg: DictConfig) -> None:
                     )
                 )
 
-            verts, faces, _, _ = marching_cubes(sdf, level=0.0)
-            mesh = pv.PolyData.from_regular_faces(verts, faces)
-            i = idx // 4
-            j = idx % 4
-            plotter.subplot(i, j)
-            plotter.add_mesh(mesh, color="white")
+            try:
+                verts, faces, _, _ = marching_cubes(sdf, level=0.0)
+                mesh = pv.PolyData.from_regular_faces(verts, faces)
+                i = idx // 4
+                j = idx % 4
+                plotter.subplot(i, j)
+                plotter.add_mesh(mesh, color="white")
+            except ValueError as e:
+                LOGGER.warning(f"Failed to reconstruct mesh: {e}")
+                pass
 
         plotter.link_views()
         plotter.export_html("outputs/latent_sample_reconstructions.html")
