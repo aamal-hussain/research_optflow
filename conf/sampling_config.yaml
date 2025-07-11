@@ -1,0 +1,24 @@
+num_samples: 16
+batch_size: 4
+sequence_length: 2048
+device: 'cuda'
+diffusion:
+  checkpoint_path: "/home/aamal.hussain/flow_research/outputs/542cf2bd7a8c4015bb411dd017256d75/final_model_state_dict.pth"
+  model:
+    in_channels: 64
+    width: 128
+    num_heads: 2
+    depth: 4
+    num_freqs: 8
+    include_pi: false
+    use_checkpoint: false
+    use_sdpa: true
+  noise_scheduler:
+    beta_start: 0.0001
+    beta_end: 0.02
+    num_timesteps: 1000
+    schedule_type: "linear"
+mesh_reconstruction:
+  reconstruct_mesh: true
+  grid_size: 64
+  checkpoint_path: "/mnt/storage01/workspace/research/lethe/pretrained_checkpoints/dora/original-dora-v1.1/state_dict.pth"

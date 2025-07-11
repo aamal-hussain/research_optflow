@@ -8,7 +8,6 @@ from tqdm import tqdm, trange
 import hydra
 import torch
 
-# from schedulefree.adamw_schedulefree import AdamWScheduleFree
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
@@ -125,7 +124,6 @@ def train(
     ) as pbar:
         for epoch in pbar:
             model.train()
-            # optimizer.train()
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
@@ -165,7 +163,6 @@ def train(
             mlflow.log_metric("train_loss", np.mean(train_batch_losses), step=epoch)
 
             model.eval()
-            # optimizer.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
