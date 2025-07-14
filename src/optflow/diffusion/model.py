@@ -47,25 +47,15 @@ class TransformerBlock(nn.Module):
             use_checkpoint=use_checkpoint,
             use_sdpa=use_sdpa,
         )
-        self.attn2 = SelfAttention(
-            in_channels=in_channels,
-            num_heads=num_heads,
-            inner_product_channels=inner_product_channels,
-            use_checkpoint=use_checkpoint,
-            use_sdpa=use_sdpa,
-        )
         self.norm1 = AdaptiveLayerNorm(in_channels)
         self.norm2 = AdaptiveLayerNorm(in_channels)
-        self.norm3 = AdaptiveLayerNorm(in_channels)
         self.ls1 = AdaptiveLayerScale(in_channels)
         self.ls2 = AdaptiveLayerScale(in_channels)
-        self.ls3 = AdaptiveLayerScale(in_channels)
         self.mlp = MLP(in_channels, in_channels)
 
     def forward(self, x, t):
         x = self.ls1(self.attn1(self.norm1(x, t))) + x
-        x = self.ls2(self.attn2(self.norm2(x, t))) + x
-        x = self.ls3(self.mlp(self.norm3(x, t))) + x
+        x = self.ls2(self.mlp(self.norm2(x, t))) + x
         return x
 
 

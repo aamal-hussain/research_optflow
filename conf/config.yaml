@@ -11,8 +11,8 @@ sequence_length: 512
 n_epochs: 1024
 optimizer: # Using AdamWScheduleFree
   lr: 1e-4
-  # weight_decay: 1e-4
-  # warmup_steps: 100
+  weight_decay: 1e-4
+  warmup_steps: 100
 device: "cuda"
 diffusion:
   model:

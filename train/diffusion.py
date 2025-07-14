@@ -8,7 +8,7 @@ from tqdm import tqdm, trange
 import hydra
 import torch
 
-from torch.optim import Adam
+from schedulefree import AdamWScheduleFree
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 import mlflow
@@ -98,7 +98,7 @@ def setup_training_artifacts(cfg: DictConfig) -> LatentDDPM:
     )
     scheduler = NoiseScheduler(device=cfg.device, **cfg.diffusion.noise_scheduler)
 
-    optimizer = Adam(model.parameters(), **cfg.optimizer)
+    optimizer = AdamWScheduleFree(model.parameters(), **cfg.optimizer)
 
     return model, scheduler, optimizer
 
@@ -124,6 +124,7 @@ def train(
     ) as pbar:
         for epoch in pbar:
             model.train()
+            optimizer.train()
             with tqdm(
                 train_dataloader, colour="#B5F2A9", unit="batch", dynamic_ncols=True
             ) as train_bar:
@@ -163,6 +164,7 @@ def train(
             mlflow.log_metric("train_loss", np.mean(train_batch_losses), step=epoch)
 
             model.eval()
+            optimizer.eval()
             with tqdm(
                 val_dataloader, colour="#F2A9B5", unit="batch", dynamic_ncols=True
             ) as val_bar:
