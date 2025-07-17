@@ -13,8 +13,8 @@ from omegaconf import DictConfig
 import mlflow
 
 
-from optflow.dora.dataset.dataset import DoraDataset
-from optflow.dora.model import DoraVAE, VAEMode
+from optflow.small_dora.dataset.dataset import SmallDoraDataset as DoraDataset
+from optflow.small_dora.model import DoraVAE, VAEMode
 from optflow.utils.h5_dataset import H5Dataset
 
 LOGGER = logging.getLogger(__name__)

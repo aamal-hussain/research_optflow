@@ -20,8 +20,8 @@ class DoraDataset(Dataset):
         faces_key: str = "faces",
         areas_key: str = "areas",
         faces_normals_key: str = "face_normals",
-        num_input_points: int = 32_768,
-        num_query_points: int = 16_384,
+        num_input_points: int = 32_76,#8,
+        num_query_points: int = 16_38,#4,
         minimum_sharp_edge_angle: float = 15.0,
     ):
         super().__init__()

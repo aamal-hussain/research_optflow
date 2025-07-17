@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - dataset: latent
+  - dataset: dora
 
 mlflow:
   experiment_name: "cleaned_shapenet"
@@ -41,7 +41,7 @@ vae:
   encoder_depth: 8
   decoder_depth: 16
   qkv_bias: false
-  use_checkpoint: true
+  use_checkpoint: false
   use_sdpa: true
   learn_var: true
 
