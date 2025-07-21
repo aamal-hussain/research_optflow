@@ -13,7 +13,7 @@ dependencies = [
     "h5py",
     "pandas",
     "hydra-core",
-    "torch-cluster",
+    "torch-cluster==1.6.4.dev1+pt27cu128",
     "fpsample",
     "point-cloud-utils",
     "scikit-image",

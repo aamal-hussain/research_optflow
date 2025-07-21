@@ -1,5 +1,7 @@
 .PHONY: env-conda env-pip rmenv-conda rmenv-pip install install-dev lint-check lint pre-commit pre-commit-all clean debug
 
+include .pxs_credentials
+
 env:
 	@conda create -y -n optflow python=3.11
 
@@ -11,7 +13,7 @@ rmenv:
 
 install:
 	@python3 -m pip install uv
-	@python3 -m uv pip install -e src/
+	@python3 -m uv pip install -e src/ --extra-index-url https://${ARTIFACTORY_USER_NAME}:${ARTIFACTORY_ACCESS_TOKEN}@physicsx.jfrog.io/artifactory/api/pypi/px-pypi-release/simple
 
 lint-check:
 	@ruff check ./
