@@ -1,6 +1,5 @@
 # Research Optflow
 
-Opora project is a PhysicsX research stream for neural operators. This repository contains `opora-pedro` -- a set of `pedro` pipelines for running the experiments.
 
 ## Getting started
 
